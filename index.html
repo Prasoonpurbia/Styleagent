@@ -1102,6 +1102,36 @@ async function runAdvisor(){
     const verdicts=JSON.parse(text.replace(/```json|```/g,'').trim());
     const vLabel={KEEP:'Keep',USE_MORE:'Use More',ROTATE_LESS:'Rotate Less',UPGRADE_SOON:'Upgrade Soon',BUY_NEXT:'Buy Next'};
     const vClass={KEEP:'v-keep',USE_MORE:'v-use_more',ROTATE_LESS:'v-rotate_less',UPGRADE_SOON:'v-upgrade_soon',BUY_NEXT:'v-buy_next'};
+
+    // Auto-populate shopping list with Buy Next items
+    const buyNextItems = verdicts.filter(v => v.verdict === 'BUY_NEXT');
+    const existingList = getShopList();
+    const existingNames = existingList.map(i => i.name.toLowerCase());
+    let autoAdded = 0;
+    buyNextItems.forEach(v => {
+      if(!existingNames.includes(v.item.toLowerCase())){
+        const list = getShopList();
+        list.unshift({
+          id: Date.now() + Math.random(),
+          name: v.item,
+          why: (v.reason||'').substring(0,120),
+          brand: 'Clarks / Uniqlo / M&S',
+          budget: '',
+          bought: false,
+          added: todayIST(),
+          source: 'advisor'
+        });
+        setShopList(list);
+        autoAdded++;
+      }
+    });
+    renderShopList();
+    if(autoAdded > 0){
+      const shopTab = document.querySelector('.sb-tab:last-child');
+      if(shopTab) shopTab.style.color = 'var(--accent)';
+      setTimeout(()=>{ if(shopTab) shopTab.style.color=''; }, 3000);
+    }
+
     results.innerHTML=verdicts.map(v=>{
       const isBuyNext = v.verdict==='BUY_NEXT';
       const safeItem = encodeURIComponent(v.item||'');
@@ -1638,7 +1668,7 @@ function renderShopList(){
   const list = getShopList();
   const el = document.getElementById('shop-list');
   if(!el) return;
-  if(!list.length){ el.innerHTML = '<div class="shop-empty">No items yet.<br>Run Advisor analysis to auto-populate,<br>or add items manually above.</div>'; return; }
+  if(!list.length){ el.innerHTML = '<div class="shop-empty">No items yet.<br>Add items manually above,<br>or run Advisor → click <strong>+ Add to Shopping List</strong><br>on any Buy Next item.</div>'; return; }
   const active = list.filter(i => !i.bought);
   const bought = list.filter(i => i.bought);
   let html = '';
