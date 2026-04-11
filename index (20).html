@@ -1,0 +1,2081 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<meta name="apple-mobile-web-app-title" content="Style Agent">
+<title>Style Agent — Prasoon</title>
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500&family=DM+Serif+Display:ital@0;1&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/mammoth/1.6.0/mammoth.browser.min.js"></script>
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0;}
+:root{
+  --bg:#f9f7f4;--surface:#fff;--surface2:#f3f0eb;--surface3:#ece8e1;
+  --border:rgba(0,0,0,0.08);--border2:rgba(0,0,0,0.14);
+  --text:#1a1915;--muted:#6b6860;--muted2:#a09d98;
+  --accent:#d97757;--accent-dark:#b85e3d;--accent-soft:rgba(217,119,87,0.1);
+  --green:#3d7a3d;--green-soft:rgba(61,122,61,0.1);
+  --blue:#2563eb;--blue-soft:rgba(37,99,235,0.08);
+  --amber:#b45309;--amber-soft:rgba(180,83,9,0.1);
+  --red:#dc2626;--red-soft:rgba(220,38,38,0.08);
+  --font:'DM Sans',system-ui,sans-serif;--serif:'DM Serif Display',Georgia,serif;
+}
+html,body{height:100%;overflow:hidden;background:var(--bg);color:var(--text);font-family:var(--font);-webkit-font-smoothing:antialiased;}
+
+/* SETUP */
+#setup{position:fixed;inset:0;background:var(--bg);display:flex;flex-direction:column;align-items:center;justify-content:center;padding:40px 24px;z-index:200;transition:opacity 0.4s;}
+#setup.gone{opacity:0;pointer-events:none;}
+.s-logo{font-family:var(--serif);font-size:40px;color:var(--text);letter-spacing:-1px;margin-bottom:4px;}
+.s-logo span{color:var(--accent);}
+.s-tag{font-size:11px;letter-spacing:0.1em;text-transform:uppercase;color:var(--muted);margin-bottom:48px;}
+.s-label{font-size:11px;letter-spacing:0.08em;text-transform:uppercase;color:var(--muted);width:100%;max-width:380px;margin-bottom:8px;}
+.s-input{width:100%;max-width:380px;background:var(--surface);border:1px solid var(--border2);border-radius:10px;padding:13px 16px;font-size:15px;color:var(--text);font-family:var(--font);outline:none;transition:border-color 0.2s;margin-bottom:8px;}
+.s-input:focus{border-color:var(--accent);}
+.s-input::placeholder{color:var(--muted2);}
+.s-hint{font-size:12px;color:var(--muted);width:100%;max-width:380px;margin-bottom:28px;line-height:1.6;}
+.s-hint a{color:var(--accent);text-decoration:none;}
+.s-btn{width:100%;max-width:380px;background:var(--accent);color:#fff;border:none;border-radius:10px;padding:14px;font-size:15px;font-weight:500;font-family:var(--font);cursor:pointer;transition:background 0.2s;}
+.s-btn:hover{background:var(--accent-dark);}
+.s-btn:disabled{opacity:0.35;cursor:not-allowed;} .s-btn{opacity:1 !important;cursor:pointer !important;}
+.s-divider{display:flex;align-items:center;gap:12px;width:100%;max-width:380px;margin:20px 0;}
+.s-divider-line{flex:1;height:0.5px;background:var(--border2);}
+.s-divider-text{font-size:11px;color:var(--muted2);letter-spacing:0.06em;text-transform:uppercase;}
+.s-guest-btn{width:100%;max-width:380px;background:var(--surface);color:var(--text);border:1px solid var(--border2);border-radius:10px;padding:13px;font-size:15px;font-family:var(--font);cursor:pointer;transition:all 0.2s;text-align:center;}
+.s-guest-btn:hover{border-color:var(--accent);color:var(--accent);}
+.s-guest-section{width:100%;max-width:380px;}
+.s-guest-label{font-size:11px;letter-spacing:0.08em;text-transform:uppercase;color:var(--muted);margin-bottom:8px;display:block;}
+.s-error{font-size:12.5px;color:var(--red);width:100%;max-width:380px;margin-top:6px;display:none;}
+.s-error.visible{display:block;}
+/* ADMIN PANEL */
+.admin-panel{position:relative;}
+.admin-toggle{width:36px;height:36px;border-radius:50%;background:var(--surface2);border:1px solid var(--border2);cursor:pointer;display:flex;align-items:center;justify-content:center;font-size:14px;color:var(--muted);transition:all 0.2s;}
+.admin-toggle:hover{border-color:var(--accent);color:var(--accent);}
+.admin-box{display:none;position:absolute;top:32px;right:0;background:var(--surface);border:1px solid var(--border2);border-radius:12px;padding:16px;width:248px;box-shadow:0 4px 24px rgba(0,0,0,0.12);z-index:100;}
+.admin-box.open{display:block;}
+.admin-box h4{font-size:11px;letter-spacing:0.08em;text-transform:uppercase;color:var(--muted);margin-bottom:12px;}
+.admin-input{width:100%;background:var(--surface2);border:1px solid var(--border2);border-radius:8px;padding:8px 12px;font-size:13px;color:var(--text);font-family:var(--font);outline:none;margin-bottom:8px;}
+.admin-input:focus{border-color:var(--accent);}
+.admin-input::placeholder{color:var(--muted2);}
+.admin-save{width:100%;background:var(--accent);color:#fff;border:none;border-radius:8px;padding:8px;font-size:13px;font-weight:500;font-family:var(--font);cursor:pointer;margin-bottom:6px;}
+.admin-save:hover{background:var(--accent-dark);}
+.admin-clear{width:100%;background:none;border:1px solid var(--border2);border-radius:8px;padding:8px;font-size:12px;color:var(--muted);font-family:var(--font);cursor:pointer;}
+.admin-clear:hover{color:var(--red);border-color:var(--red);}
+.admin-status{font-size:11px;color:var(--muted);margin-top:8px;line-height:1.5;}
+.admin-status strong{color:var(--green);}
+
+/* APP */
+#app{display:flex;height:100vh;overflow:hidden;}
+
+/* SIDEBAR */
+#sidebar{width:272px;flex-shrink:0;background:var(--surface);border-right:1px solid var(--border);display:flex;flex-direction:column;}
+.sb-head{padding:18px 20px 14px;border-bottom:1px solid var(--border);display:flex;align-items:center;gap:10px;}
+.sb-head h1{font-family:var(--serif);font-size:20px;color:var(--text);letter-spacing:-0.3px;}
+.sb-head p{font-size:10px;letter-spacing:0.07em;text-transform:uppercase;color:var(--muted);margin-top:1px;}
+.sb-tabs{display:grid;grid-template-columns:repeat(4,1fr);border-bottom:1px solid var(--border);}
+.sb-tab{padding:9px 2px;font-size:10px;text-align:center;cursor:pointer;color:var(--muted);border:none;background:none;font-family:var(--font);letter-spacing:0.03em;text-transform:uppercase;border-bottom:2px solid transparent;margin-bottom:-1px;transition:all 0.15s;}
+.sb-tab.active{color:var(--accent);border-bottom-color:var(--accent);}
+.sb-panel{display:none;flex:1;overflow-y:auto;padding:14px 18px;}
+.sb-panel.active{display:block;}
+.sb-panel::-webkit-scrollbar{width:3px;}
+.sb-panel::-webkit-scrollbar-thumb{background:var(--border2);border-radius:3px;}
+
+/* WARDROBE PANEL */
+.sb-section{margin-bottom:18px;}
+.sb-section h4{font-size:10px;letter-spacing:0.09em;text-transform:uppercase;color:var(--muted2);margin-bottom:8px;}
+.w-item{font-size:12.5px;color:var(--text);padding:5px 0;border-bottom:1px solid var(--border);display:flex;align-items:center;gap:8px;line-height:1.3;}
+.w-item:last-child{border-bottom:none;}
+.wdot{width:7px;height:7px;border-radius:50%;flex-shrink:0;}
+.w-add-form{background:var(--surface2);border-radius:8px;padding:10px;margin-top:4px;}
+.w-add-form h4{font-size:10px;letter-spacing:0.08em;text-transform:uppercase;color:var(--muted2);margin-bottom:8px;}
+.w-add-input,.w-add-select{width:100%;background:var(--surface);border:1px solid var(--border2);border-radius:6px;padding:7px 10px;font-size:12.5px;color:var(--text);font-family:var(--font);outline:none;margin-bottom:6px;}
+.w-add-input:focus{border-color:var(--accent);}
+.w-add-input::placeholder{color:var(--muted2);}
+.w-add-btn{width:100%;background:var(--accent);color:#fff;border:none;border-radius:6px;padding:7px;font-size:12px;font-weight:500;font-family:var(--font);cursor:pointer;}
+.w-add-btn:hover{background:var(--accent-dark);}
+.w-item-row{display:flex;align-items:center;gap:8px;padding:5px 0;border-bottom:1px solid var(--border);}
+.w-item-row:last-child{border-bottom:none;}
+.w-item-text{flex:1;font-size:12.5px;color:var(--text);}
+.w-remove{background:none;border:none;color:var(--muted2);cursor:pointer;font-size:13px;padding:0 2px;line-height:1;}
+.w-remove:hover{color:var(--red);}
+
+/* LOG PANEL */
+.rule-note{font-size:11.5px;color:var(--muted);background:var(--accent-soft);border-radius:8px;padding:10px 12px;margin-bottom:12px;line-height:1.6;border:1px solid rgba(217,119,87,0.2);}
+.rule-note strong{color:var(--accent-dark);font-weight:500;}
+.backfill-box{background:var(--surface2);border:1px solid var(--border);border-radius:10px;padding:12px;margin-bottom:12px;}
+.backfill-box h4{font-size:10px;letter-spacing:0.08em;text-transform:uppercase;color:var(--muted2);margin-bottom:10px;}
+.bf-date,.bf-text,.bf-select{width:100%;background:var(--surface);border:1px solid var(--border2);border-radius:8px;padding:8px 10px;font-size:12.5px;color:var(--text);font-family:var(--font);outline:none;margin-bottom:6px;}
+.bf-date:focus,.bf-text:focus{border-color:var(--accent);}
+.bf-text{resize:none;min-height:54px;line-height:1.5;}
+.bf-text::placeholder{color:var(--muted2);}
+.bf-btn{width:100%;background:var(--accent);color:#fff;border:none;border-radius:8px;padding:8px;font-size:12.5px;font-weight:500;font-family:var(--font);cursor:pointer;}
+.bf-btn:hover{background:var(--accent-dark);}
+.h-entry{background:var(--surface);border:1px solid var(--border);border-radius:10px;padding:9px 12px;margin-bottom:7px;position:relative;}
+.h-date{font-size:10px;letter-spacing:0.06em;text-transform:uppercase;color:var(--accent);margin-bottom:2px;font-weight:500;}
+.h-occasion{font-size:10px;color:var(--blue);margin-bottom:3px;}
+.h-outfit{font-size:12px;color:var(--text);line-height:1.5;padding-right:20px;}
+.h-source{font-size:10px;margin-top:3px;color:var(--green);}
+.h-del{position:absolute;top:8px;right:9px;background:none;border:none;color:var(--muted2);cursor:pointer;font-size:14px;}
+.h-del:hover{color:var(--red);}
+.no-history{font-size:13px;color:var(--muted);text-align:center;padding:20px 0;line-height:1.7;}
+/* WEATHER */
+.brief-weather{display:flex;align-items:center;gap:8px;background:var(--surface2);border-radius:8px;padding:9px 12px;margin-bottom:12px;}
+.brief-weather-icon{font-size:22px;}
+.brief-weather-info{}
+.brief-weather-temp{font-size:16px;font-weight:500;color:var(--text);}
+.brief-weather-desc{font-size:11px;color:var(--muted);margin-top:1px;}
+.brief-weather-tip{font-size:11px;color:var(--accent-dark);margin-top:2px;font-style:italic;}
+
+/* OUTFIT RATING */
+.h-rating{display:flex;align-items:center;gap:3px;margin-top:6px;}
+.star-btn{background:none;border:none;cursor:pointer;font-size:16px;padding:1px;line-height:1;transition:transform 0.1s;}
+.star-btn:hover{transform:scale(1.2);}
+.h-rating-label{font-size:10px;color:var(--muted);margin-left:4px;letter-spacing:0.04em;}
+
+/* SHOPPING LIST */
+.shop-section{margin-bottom:14px;}
+.shop-section h4{font-size:10px;letter-spacing:0.09em;text-transform:uppercase;color:var(--muted2);margin-bottom:8px;}
+.shop-item{background:var(--surface);border:1px solid var(--border);border-radius:10px;padding:10px 12px;margin-bottom:7px;position:relative;}
+.shop-item.bought{opacity:0.55;}
+.shop-item-top{display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:4px;}
+.shop-item-name{font-size:13px;font-weight:500;color:var(--text);}
+.shop-item-cat{font-size:10px;color:var(--muted);margin-top:1px;}
+.shop-item-budget{font-size:11px;color:var(--accent-dark);background:var(--accent-soft);padding:2px 8px;border-radius:20px;white-space:nowrap;margin-left:8px;flex-shrink:0;}
+.shop-item-why{font-size:12px;color:var(--muted);line-height:1.5;margin-bottom:7px;}
+.shop-item-brand{font-size:11.5px;color:var(--blue);margin-bottom:8px;}
+.shop-item-actions{display:flex;gap:6px;}
+.shop-bought-btn{flex:1;background:var(--green-soft);color:var(--green);border:1px solid rgba(61,122,61,0.25);border-radius:6px;padding:6px;font-size:11.5px;font-weight:500;font-family:var(--font);cursor:pointer;}
+.shop-bought-btn:hover{background:var(--green);color:#fff;}
+.shop-del-btn{background:none;border:1px solid var(--border2);border-radius:6px;padding:6px 10px;font-size:11.5px;color:var(--muted);font-family:var(--font);cursor:pointer;}
+.shop-del-btn:hover{color:var(--red);border-color:var(--red);}
+.shop-bought-badge{font-size:10px;color:var(--green);background:var(--green-soft);padding:2px 8px;border-radius:20px;margin-left:6px;}
+.shop-empty{font-size:12.5px;color:var(--muted);text-align:center;padding:20px 0;line-height:1.6;}
+.shop-add-form{background:var(--surface2);border:1px solid var(--border);border-radius:10px;padding:12px;margin-bottom:12px;}
+.shop-add-form h4{font-size:10px;letter-spacing:0.08em;text-transform:uppercase;color:var(--muted2);margin-bottom:8px;}
+.shop-input{width:100%;background:var(--surface);border:1px solid var(--border2);border-radius:6px;padding:7px 10px;font-size:12.5px;color:var(--text);font-family:var(--font);outline:none;margin-bottom:6px;}
+.shop-input:focus{border-color:var(--accent);}
+.shop-input::placeholder{color:var(--muted2);}
+.shop-add-btn{width:100%;background:var(--accent);color:#fff;border:none;border-radius:6px;padding:7px;font-size:12px;font-weight:500;font-family:var(--font);cursor:pointer;}
+.shop-add-btn:hover{background:var(--accent-dark);}
+
+/* SHARE CARD */
+.share-card-btn{display:inline-flex;align-items:center;gap:6px;font-size:12px;color:var(--blue);background:var(--blue-soft);border:1px solid rgba(37,99,235,0.2);border-radius:20px;padding:5px 12px;margin-top:8px;cursor:pointer;font-family:var(--font);border-style:solid;}
+.share-card-btn:hover{background:rgba(37,99,235,0.15);}
+#share-modal{display:none;position:fixed;inset:0;background:rgba(0,0,0,0.6);z-index:500;align-items:center;justify-content:center;padding:20px;}
+#share-modal.open{display:flex;}
+#share-inner{background:var(--surface);border-radius:16px;width:100%;max-width:420px;overflow:hidden;}
+#share-card-preview{padding:0;}
+#share-footer{padding:14px 18px;border-top:1px solid var(--border);display:flex;gap:8px;justify-content:flex-end;}
+.share-cancel{background:none;border:1px solid var(--border2);border-radius:8px;padding:9px 16px;font-size:13px;color:var(--muted);font-family:var(--font);cursor:pointer;}
+.share-download{background:var(--accent);color:#fff;border:none;border-radius:8px;padding:9px 16px;font-size:13px;font-weight:500;font-family:var(--font);cursor:pointer;}
+.share-download:hover{background:var(--accent-dark);}
+
+/* PHOTO LOG */
+.h-photo{width:100%;max-height:180px;object-fit:cover;border-radius:8px;margin-top:7px;display:block;cursor:pointer;}
+.h-photo-placeholder{margin-top:7px;}
+.h-add-photo{display:inline-flex;align-items:center;gap:5px;font-size:11px;color:var(--accent);background:var(--accent-soft);border:1px solid rgba(217,119,87,0.2);border-radius:20px;padding:4px 10px;cursor:pointer;font-family:var(--font);}
+.h-add-photo:hover{background:rgba(217,119,87,0.2);}
+.h-photo-input{display:none;}
+/* PHOTO IN CHAT BUBBLE */
+.outfit-photo-btn{display:inline-flex;align-items:center;gap:6px;font-size:12px;color:var(--accent);background:var(--accent-soft);border:1px solid rgba(217,119,87,0.25);border-radius:20px;padding:5px 12px;margin-top:10px;cursor:pointer;font-family:var(--font);border:none;}
+.outfit-photo-btn:hover{background:rgba(217,119,87,0.2);}
+/* PHOTO LIGHTBOX */
+#photo-lightbox{display:none;position:fixed;inset:0;background:rgba(0,0,0,0.85);z-index:600;align-items:center;justify-content:center;cursor:pointer;}
+#photo-lightbox.open{display:flex;}
+#photo-lightbox img{max-width:90vw;max-height:90vh;border-radius:12px;object-fit:contain;}
+
+/* INSIGHTS PANEL */
+.insight-card{background:var(--surface);border:1px solid var(--border);border-radius:10px;padding:12px;margin-bottom:10px;}
+.insight-card h4{font-size:11px;letter-spacing:0.06em;text-transform:uppercase;color:var(--muted);margin-bottom:8px;}
+.insight-row{display:flex;justify-content:space-between;align-items:center;padding:5px 0;border-bottom:1px solid var(--border);font-size:12.5px;}
+.insight-row:last-child{border-bottom:none;}
+.insight-val{font-weight:500;color:var(--accent);}
+.insight-badge{font-size:10px;padding:2px 8px;border-radius:20px;font-weight:500;}
+.badge-overuse{background:var(--red-soft);color:var(--red);}
+.badge-underuse{background:var(--blue-soft);color:var(--blue);}
+.badge-good{background:var(--green-soft);color:var(--green);}
+.insight-empty{font-size:12.5px;color:var(--muted);text-align:center;padding:20px 0;line-height:1.6;}
+.insight-refresh{width:100%;background:var(--surface2);border:1px solid var(--border2);border-radius:8px;padding:8px;font-size:12px;color:var(--muted);font-family:var(--font);cursor:pointer;margin-bottom:12px;}
+.insight-refresh:hover{color:var(--text);}
+
+/* ADVISOR PANEL */
+.advisor-intro{font-size:12.5px;color:var(--muted);line-height:1.6;margin-bottom:12px;}
+.advisor-btn{width:100%;background:var(--accent);color:#fff;border:none;border-radius:10px;padding:11px;font-size:13px;font-weight:500;font-family:var(--font);cursor:pointer;margin-bottom:12px;transition:background 0.2s;}
+.advisor-btn:hover{background:var(--accent-dark);}
+.advisor-btn:disabled{opacity:0.4;cursor:not-allowed;}
+.verdict-card{background:var(--surface);border:1px solid var(--border);border-radius:10px;padding:11px 13px;margin-bottom:8px;}
+.verdict-top{display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:6px;}
+.verdict-item{font-size:13px;font-weight:500;color:var(--text);}
+.verdict-cat{font-size:10px;color:var(--muted);margin-top:1px;}
+.verdict-badge{font-size:10px;padding:3px 9px;border-radius:20px;font-weight:500;white-space:nowrap;flex-shrink:0;margin-left:8px;}
+.v-keep{background:var(--green-soft);color:var(--green);}
+.v-use_more{background:var(--blue-soft);color:var(--blue);}
+.v-rotate_less{background:var(--amber-soft);color:var(--amber);}
+.v-upgrade_soon{background:var(--red-soft);color:var(--red);}
+.v-buy_next{background:var(--accent-soft);color:var(--accent-dark);}
+.verdict-reason{font-size:12px;color:var(--muted);line-height:1.5;}
+.advisor-loading{font-size:12.5px;color:var(--muted);text-align:center;padding:20px 0;}
+
+.sb-foot{padding:12px 18px;border-top:1px solid var(--border);}
+.sb-foot-btns{display:flex;flex-direction:column;gap:6px;}
+.export-btn{width:100%;background:var(--surface2);border:1px solid var(--border2);border-radius:8px;padding:7px 10px;font-size:11.5px;color:var(--muted);font-family:var(--font);cursor:pointer;text-align:left;transition:all 0.15s;}
+.export-btn:hover{color:var(--text);border-color:var(--accent);}
+.export-btn.danger:hover{color:var(--red);border-color:var(--red);}
+#import-file{display:none;}
+.clear-btn{font-size:12px;color:var(--muted);background:none;border:none;cursor:pointer;font-family:var(--font);}
+.clear-btn:hover{color:var(--text);}
+
+/* CHAT */
+#chat{flex:1;display:flex;flex-direction:column;min-width:0;overflow:hidden;background:var(--bg);}
+#mob-head{display:none;padding:12px 16px;border-bottom:1px solid var(--border);background:var(--surface);align-items:center;justify-content:space-between;}
+#mob-head h2{font-family:var(--serif);font-size:19px;color:var(--text);}
+#mob-log-btn{font-size:11px;color:var(--accent);background:none;border:1px solid rgba(217,119,87,0.35);border-radius:20px;padding:5px 11px;font-family:var(--font);cursor:pointer;}
+
+#messages{flex:1;overflow-y:auto;padding:18px 20px;display:flex;flex-direction:column;gap:14px;scroll-behavior:smooth;}
+#messages::-webkit-scrollbar{width:4px;}
+#messages::-webkit-scrollbar-thumb{background:var(--border2);border-radius:4px;}
+
+/* DAILY BRIEF */
+.daily-brief{background:var(--surface);border:1px solid var(--border);border-radius:16px;padding:16px 18px;margin-bottom:4px;}
+.brief-header{display:flex;align-items:center;gap:8px;margin-bottom:12px;}
+.brief-day{font-family:var(--serif);font-size:18px;color:var(--text);}
+.brief-season{font-size:11px;padding:3px 10px;border-radius:20px;background:var(--accent-soft);color:var(--accent-dark);font-weight:500;}
+.brief-grid{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:12px;}
+.brief-item{background:var(--surface2);border-radius:8px;padding:9px 11px;}
+.brief-item-label{font-size:10px;letter-spacing:0.06em;text-transform:uppercase;color:var(--muted);margin-bottom:3px;}
+.brief-item-val{font-size:12.5px;color:var(--text);font-weight:500;line-height:1.4;}
+.brief-fresh{background:var(--surface2);border-radius:8px;padding:9px 11px;margin-bottom:12px;}
+.brief-fresh-label{font-size:10px;letter-spacing:0.06em;text-transform:uppercase;color:var(--muted);margin-bottom:5px;}
+.brief-fresh-items{display:flex;flex-wrap:wrap;gap:5px;}
+.fresh-pill{font-size:11px;padding:3px 9px;border-radius:20px;background:var(--green-soft);color:var(--green);border:1px solid rgba(61,122,61,0.2);}
+.brief-primary{background:var(--accent-soft);border:1px solid rgba(217,119,87,0.25);border-radius:10px;padding:11px 13px;}
+.brief-primary-label{font-size:10px;letter-spacing:0.07em;text-transform:uppercase;color:var(--accent-dark);margin-bottom:5px;font-weight:500;}
+.brief-loading{font-size:13px;color:var(--muted);padding:4px 0;}
+
+/* MESSAGES */
+.msg{display:flex;gap:10px;align-items:flex-start;}
+.msg.user{flex-direction:row-reverse;}
+.m-av{width:28px;height:28px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:12px;flex-shrink:0;margin-top:2px;}
+.agent .m-av{background:var(--accent-soft);border:1px solid rgba(217,119,87,0.25);color:var(--accent-dark);}
+.user .m-av{background:var(--surface3);font-size:11px;font-weight:500;color:var(--accent-dark);border:1px solid var(--border2);}
+.bubble{padding:11px 15px;border-radius:18px;font-size:14px;line-height:1.65;max-width:min(700px,calc(100% - 40px));}
+.agent .bubble{background:var(--surface);border:1px solid var(--border);border-radius:4px 18px 18px 18px;}
+.user .bubble{background:var(--surface2);border:1px solid var(--border);border-radius:18px 4px 18px 18px;}
+
+/* ROTATION PLAN TABLE */
+.plan-wrap{margin-top:6px;overflow-x:auto;border-radius:12px;border:1px solid var(--border2);}
+.plan-title{font-size:13px;font-weight:500;color:var(--accent-dark);padding:12px 16px 10px;border-bottom:1px solid var(--border);background:var(--accent-soft);border-radius:12px 12px 0 0;letter-spacing:0.02em;}
+.plan-table{width:100%;border-collapse:collapse;font-size:12.5px;background:var(--surface);}
+.plan-table th{background:var(--accent);color:#fff;padding:9px 12px;text-align:left;font-weight:500;font-size:11px;letter-spacing:0.05em;text-transform:uppercase;white-space:nowrap;}
+.plan-table th:first-child{border-radius:0;}
+.plan-table td{padding:10px 12px;border-bottom:1px solid var(--border);vertical-align:top;line-height:1.45;}
+.plan-table tr:last-child td{border-bottom:none;}
+.plan-table tr:nth-child(even) td{background:#faf8f5;}
+.plan-table tr:hover td{background:var(--accent-soft);}
+.plan-day-cell{font-weight:500;color:var(--text);white-space:nowrap;}
+.plan-date-cell{color:var(--muted);font-size:11.5px;white-space:nowrap;}
+.plan-occ-pill{display:inline-block;font-size:10px;padding:2px 7px;border-radius:20px;background:var(--blue-soft);color:var(--blue);white-space:nowrap;margin-top:2px;}
+.plan-shoe-brown{color:#8B6343;font-weight:500;}
+.plan-shoe-black{color:#333;font-weight:500;}
+.plan-why{font-size:11px;color:var(--muted);font-style:italic;line-height:1.4;}
+.plan-log-btn{width:100%;background:var(--green-soft);color:var(--green);border:1px solid rgba(61,122,61,0.25);border-radius:0 0 12px 12px;padding:9px;font-size:12px;font-weight:500;font-family:var(--font);cursor:pointer;transition:all 0.15s;}
+.plan-log-btn:hover{background:var(--green);color:#fff;}
+
+/* WHY + AVOID blocks */
+.why-block{background:var(--green-soft);border:1px solid rgba(61,122,61,0.2);border-radius:8px;padding:9px 12px;margin-top:10px;}
+.why-label{font-size:10px;letter-spacing:0.07em;text-transform:uppercase;color:var(--green);margin-bottom:4px;font-weight:500;}
+.why-text{font-size:12.5px;color:var(--text);line-height:1.55;}
+.avoid-block{background:var(--amber-soft);border:1px solid rgba(180,83,9,0.2);border-radius:8px;padding:9px 12px;margin-top:8px;}
+.avoid-label{font-size:10px;letter-spacing:0.07em;text-transform:uppercase;color:var(--amber);margin-bottom:4px;font-weight:500;}
+.avoid-text{font-size:12.5px;color:var(--text);line-height:1.55;}
+.autolog-tag{display:inline-flex;align-items:center;gap:4px;font-size:11px;color:var(--green);background:var(--green-soft);border-radius:20px;padding:3px 10px;margin-top:8px;border:1px solid rgba(61,122,61,0.2);}
+
+.typing-b{background:var(--surface);border:1px solid var(--border);border-radius:4px 18px 18px 18px;padding:13px 16px;display:flex;gap:5px;align-items:center;}
+.tdot{width:5px;height:5px;border-radius:50%;background:var(--muted2);animation:bounce 1.3s infinite;}
+.tdot:nth-child(2){animation-delay:0.2s;}
+.tdot:nth-child(3){animation-delay:0.4s;}
+@keyframes bounce{0%,60%,100%{transform:translateY(0)}30%{transform:translateY(-5px)}}
+
+#chips{display:flex;flex-wrap:wrap;gap:6px;padding:4px 20px 12px;}
+.chip{font-size:12px;padding:6px 13px;border-radius:20px;border:1px solid var(--border2);background:var(--surface);color:var(--muted);cursor:pointer;font-family:var(--font);transition:all 0.15s;}
+.chip:hover{border-color:var(--accent);color:var(--accent);background:var(--accent-soft);}
+
+#bar{padding:12px 18px;border-top:1px solid var(--border);background:var(--surface);display:flex;gap:10px;align-items:flex-end;}
+#user-input{flex:1;background:var(--bg);border:1px solid var(--border2);border-radius:12px;padding:10px 14px;font-size:14.5px;color:var(--text);font-family:var(--font);outline:none;resize:none;min-height:40px;max-height:120px;line-height:1.5;transition:border-color 0.2s;}
+#user-input:focus{border-color:var(--accent);}
+#user-input::placeholder{color:var(--muted2);}
+#send{width:38px;height:38px;border-radius:50%;background:var(--accent);border:none;cursor:pointer;display:flex;align-items:center;justify-content:center;flex-shrink:0;transition:background 0.2s;}
+#attach-btn{width:34px;height:34px;border-radius:50%;background:none;border:1px solid var(--border2);cursor:pointer;display:flex;align-items:center;justify-content:center;flex-shrink:0;transition:all 0.15s;color:var(--muted);}
+#attach-btn:hover{border-color:var(--accent);color:var(--accent);background:var(--accent-soft);}
+#attach-btn.active{border-color:var(--accent);color:var(--accent);background:var(--accent-soft);}
+#attach-input{display:none;}
+#attach-preview{display:none;padding:8px 18px 4px;background:var(--surface);border-top:1px solid var(--border);}
+#attach-preview.visible{display:block;}
+.attach-chip{display:inline-flex;align-items:center;gap:8px;background:var(--surface2);border:1px solid var(--border2);border-radius:10px;padding:7px 12px;max-width:100%;}
+.attach-thumb{width:36px;height:36px;border-radius:6px;object-fit:cover;flex-shrink:0;}
+.attach-file-icon{width:36px;height:36px;border-radius:6px;display:flex;align-items:center;justify-content:center;font-size:18px;flex-shrink:0;}
+.attach-info{min-width:0;}
+.attach-info-name{font-size:13px;font-weight:500;color:var(--text);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:220px;}
+.attach-info-size{font-size:11px;color:var(--muted);margin-top:1px;}
+.attach-remove{background:none;border:none;color:var(--muted2);cursor:pointer;font-size:18px;line-height:1;margin-left:4px;flex-shrink:0;}
+.attach-remove:hover{color:var(--red);}
+.msg-attachment{margin-bottom:6px;}
+.msg-attachment img{max-width:260px;max-height:200px;border-radius:10px;display:block;}
+.msg-attachment .file-pill{display:inline-flex;align-items:center;gap:8px;background:var(--surface2);border:1px solid var(--border2);border-radius:8px;padding:7px 12px;font-size:12.5px;color:var(--text);}
+.msg-attachment .file-pill-icon{font-size:18px;}
+/* EXCEL PREVIEW MODAL */
+#excel-modal{display:none;position:fixed;inset:0;background:rgba(0,0,0,0.5);z-index:400;align-items:center;justify-content:center;padding:20px;}
+#excel-modal.open{display:flex;}
+#excel-inner{background:var(--surface);border-radius:16px;width:100%;max-width:680px;max-height:85vh;display:flex;flex-direction:column;overflow:hidden;}
+#excel-header{padding:18px 20px;border-bottom:1px solid var(--border);display:flex;justify-content:space-between;align-items:center;}
+#excel-header h3{font-size:15px;font-weight:500;color:var(--text);}
+#excel-header p{font-size:12px;color:var(--muted);margin-top:2px;}
+.excel-close{background:none;border:none;color:var(--muted);font-size:22px;cursor:pointer;line-height:1;}
+#excel-body{flex:1;overflow-y:auto;padding:16px 20px;}
+#excel-footer{padding:14px 20px;border-top:1px solid var(--border);display:flex;gap:10px;justify-content:flex-end;}
+.excel-cancel{background:none;border:1px solid var(--border2);border-radius:8px;padding:9px 18px;font-size:13px;color:var(--muted);font-family:var(--font);cursor:pointer;}
+.excel-cancel:hover{color:var(--text);}
+.excel-import{background:var(--accent);color:#fff;border:none;border-radius:8px;padding:9px 18px;font-size:13px;font-weight:500;font-family:var(--font);cursor:pointer;}
+.excel-import:hover{background:var(--accent-dark);}
+.excel-mapping{background:var(--surface2);border-radius:10px;padding:14px;margin-bottom:14px;border:1px solid var(--border);}
+.excel-mapping h4{font-size:11px;letter-spacing:0.07em;text-transform:uppercase;color:var(--muted);margin-bottom:10px;}
+.map-row{display:flex;align-items:center;gap:10px;margin-bottom:7px;font-size:13px;}
+.map-label{width:100px;color:var(--muted);flex-shrink:0;}
+.map-select{flex:1;background:var(--surface);border:1px solid var(--border2);border-radius:6px;padding:6px 10px;font-size:12.5px;color:var(--text);font-family:var(--font);outline:none;}
+.map-select:focus{border-color:var(--accent);}
+.excel-preview{border:1px solid var(--border);border-radius:8px;overflow:hidden;}
+.excel-preview table{width:100%;border-collapse:collapse;font-size:12px;}
+.excel-preview th{background:var(--accent);color:#fff;padding:8px 10px;text-align:left;font-weight:500;white-space:nowrap;}
+.excel-preview td{padding:7px 10px;border-bottom:1px solid var(--border);color:var(--text);white-space:nowrap;}
+.excel-preview tr:last-child td{border-bottom:none;}
+.excel-preview tr:nth-child(even) td{background:var(--surface2);}
+.excel-count{font-size:12px;color:var(--muted);margin-bottom:10px;}
+.excel-note{font-size:12px;color:var(--muted);background:var(--accent-soft);border-radius:8px;padding:10px 12px;margin-bottom:14px;line-height:1.6;border:1px solid rgba(217,119,87,0.2);}
+#send:hover{background:var(--accent-dark);}
+#send:disabled{opacity:0.3;cursor:not-allowed;}
+#send svg{width:14px;height:14px;fill:#fff;}
+
+#mob-modal{display:none;position:fixed;inset:0;background:rgba(0,0,0,0.4);z-index:300;align-items:flex-end;}
+#mob-modal.open{display:flex;}
+#mob-modal-inner{background:var(--surface);border-radius:20px 20px 0 0;padding:22px 18px 44px;width:100%;max-height:80vh;overflow-y:auto;}
+#mob-modal-inner h3{font-size:15px;font-weight:500;margin-bottom:14px;color:var(--text);}
+.mob-close{float:right;background:none;border:none;color:var(--muted);font-size:22px;cursor:pointer;}
+
+@media(max-width:700px){
+  #sidebar{display:none;}
+  #mob-head{display:flex;}
+  #messages{padding:12px 14px;}
+  #chips{padding:4px 14px 10px;}
+  #bar{padding:10px 14px;}
+  .bubble{font-size:13.5px;}
+  .brief-grid{grid-template-columns:1fr;}
+  .plan-table th,.plan-table td{padding:7px 9px;font-size:11.5px;}
+}
+</style>
+</head>
+<body>
+
+<div id="setup">
+  <div class="s-logo">Style <span>Agent</span></div>
+  <div class="s-tag">Prasoon's personal wardrobe AI · v3.1</div>
+
+  <!-- OWNER LOGIN -->
+  <div id="owner-section">
+    <div class="s-label">Your Anthropic API Key</div>
+    <input class="s-input" type="password" id="key-in" placeholder="sk-ant-api03-..." autocomplete="off" spellcheck="false">
+    <div class="s-hint">Get your key at <a href="https://console.anthropic.com" target="_blank">console.anthropic.com</a> → API Keys. Stored only in your browser.</div>
+    <button class="s-btn" id="start-btn">Open Style Agent →</button>
+  </div>
+
+  <!-- DIVIDER -->
+  <div class="s-divider" id="guest-divider" style="display:none;">
+    <div class="s-divider-line"></div>
+    <span class="s-divider-text">or</span>
+    <div class="s-divider-line"></div>
+  </div>
+
+  <!-- GUEST LOGIN -->
+  <div id="guest-section" style="display:none;">
+    <div class="s-guest-section">
+      <span class="s-guest-label">Guest password</span>
+      <input class="s-input" type="password" id="guest-pw-in" placeholder="Enter guest password..." autocomplete="off" spellcheck="false">
+      <div class="s-error" id="guest-error">Incorrect password. Try again.</div>
+      <button class="s-btn" id="guest-btn" style="margin-top:8px;background:var(--surface);color:var(--text);border:1px solid var(--border2);" disabled>Enter as guest →</button>
+    </div>
+  </div>
+</div>
+
+<div id="app">
+  <div id="sidebar">
+    <div class="sb-head" style="position:relative;">
+      <svg class="sb-mark" width="26" height="26" viewBox="0 0 40 40" fill="none"><circle cx="20" cy="20" r="16" fill="#FDF5F0"/><path d="M20 10c-5.52 0-10 4.48-10 10s4.48 10 10 10 10-4.48 10-10-4.48-10-10-10zm-1 14v-8l6 4-6 4z" fill="#D97757"/></svg>
+      <div style="flex:1;"><h1>Style Agent</h1><p>Prasoon's wardrobe AI</p></div>
+      <div id="admin-panel" style="display:none;position:relative;">
+        <button class="admin-toggle" onclick="toggleAdminBox()" title="Guest access settings" style="width:28px;height:28px;font-size:13px;">⚙</button>
+        <div class="admin-box" id="admin-box" style="right:0;left:auto;bottom:auto;top:32px;">
+          <h4>Guest access</h4>
+          <input class="admin-input" type="text" id="admin-guest-pw" placeholder="Set guest password..." maxlength="30">
+          <button class="admin-save" onclick="saveGuestAccess()">Enable guest access</button>
+          <button class="admin-clear" onclick="clearGuestAccess()">Revoke guest access</button>
+          <div class="admin-status" id="admin-status"></div>
+        </div>
+      </div>
+    </div>
+    <div class="sb-tabs" style="grid-template-columns:repeat(5,1fr);">
+      <button class="sb-tab active" onclick="switchTab('wardrobe')">Kit</button>
+      <button class="sb-tab" onclick="switchTab('log')">Log</button>
+      <button class="sb-tab" onclick="switchTab('insights')">Stats</button>
+      <button class="sb-tab" onclick="switchTab('advisor')">Advisor</button>
+      <button class="sb-tab" onclick="switchTab('shop')">Shop</button>
+    </div>
+
+    <!-- KIT TAB -->
+    <div class="sb-panel active" id="panel-wardrobe">
+      <div class="sb-section"><h4>Tops</h4><div id="list-tops"></div></div>
+      <div class="sb-section"><h4>Bottoms</h4><div id="list-bottoms"></div></div>
+      <div class="sb-section"><h4>Shoes</h4><div id="list-shoes"></div></div>
+      <div class="sb-section"><h4>Accessories</h4><div id="list-accessories"></div></div>
+      <div class="w-add-form">
+        <h4>Add new piece</h4>
+        <select class="w-add-select" id="new-category">
+          <option value="tops">Top / Shirt / Polo</option>
+          <option value="bottoms">Bottom / Jeans / Chino</option>
+          <option value="shoes">Shoes</option>
+          <option value="accessories">Accessory</option>
+        </select>
+        <input class="w-add-input" id="new-item" placeholder="e.g. White linen shirt">
+        <button class="w-add-btn" onclick="addWardrobeItem()">Add to wardrobe</button>
+      </div>
+      <div class="sb-section" style="margin-top:14px;">
+        <h4>Accessory rule</h4>
+        <div class="w-item"><div class="wdot" style="background:#8B6343"></div>Brown day → all brown + tortoise glasses</div>
+        <div class="w-item"><div class="wdot" style="background:#252524"></div>Black day → all black + black/red glasses</div>
+      </div>
+      <div class="sb-section">
+        <h4>Repeat rules</h4>
+        <div class="w-item"><div class="wdot" style="background:var(--accent)"></div>Same top → 10 day wait</div>
+        <div class="w-item"><div class="wdot" style="background:var(--accent)"></div>Same full outfit → 30 day wait</div>
+        <div class="w-item"><div class="wdot" style="background:var(--accent)"></div>Auto-logged on every recommendation</div>
+      </div>
+    </div>
+
+    <!-- LOG TAB -->
+    <div class="sb-panel" id="panel-log">
+      <div class="rule-note"><strong>Auto-logged</strong> on every recommendation. Backfill past outfits below.</div>
+      <div class="backfill-box">
+        <h4>Add past outfit</h4>
+        <input type="date" class="bf-date" id="log-date">
+        <select class="bf-select" id="log-occasion">
+          <option value="">Occasion (optional)</option>
+          <option value="Regular office day">Regular office day</option>
+          <option value="Leadership meeting">Leadership meeting</option>
+          <option value="Client meeting">Client meeting</option>
+          <option value="Casual Friday">Casual Friday</option>
+          <option value="Weekend / casual">Weekend / casual</option>
+          <option value="Evening outing">Evening outing</option>
+        </select>
+        <textarea class="bf-text" id="log-text" placeholder="e.g. Olive overshirt, navy polo, dark indigo jeans, brown loafers, brown belt, tortoise glasses"></textarea>
+        <button class="bf-btn" onclick="saveEntry()">Add to log</button>
+      </div>
+      <div id="history-list"></div>
+    </div>
+
+    <!-- STATS TAB -->
+    <div class="sb-panel" id="panel-insights">
+      <button class="insight-refresh" onclick="buildInsights()">↺ Refresh insights</button>
+      <div id="insights-content"><div class="insight-empty">Log at least 5 outfits to unlock style insights.</div></div>
+    </div>
+
+    <!-- ADVISOR TAB -->
+    <div class="sb-panel" id="panel-advisor">
+      <div class="advisor-intro">Analyses every piece you own — usage, utility, style strength, and ROI — then tells you what to keep, use more, rotate less, upgrade, or buy next.</div>
+      <button class="advisor-btn" id="advisor-run-btn" onclick="runAdvisor()">Run wardrobe analysis</button>
+      <div id="advisor-results"></div>
+    </div>
+
+    <!-- SHOP PANEL -->
+    <div class="sb-panel" id="panel-shop">
+      <div class="shop-add-form">
+        <h4>Add item manually</h4>
+        <input class="shop-input" id="shop-name" placeholder="Item name (e.g. Black loafers)">
+        <input class="shop-input" id="shop-why" placeholder="Why (e.g. current ones ill-fitting)">
+        <input class="shop-input" id="shop-brand" placeholder="Brand suggestion (optional)">
+        <input class="shop-input" id="shop-budget" placeholder="Budget (e.g. ₹2,000–4,000)">
+        <button class="shop-add-btn" onclick="addShopItem()">Add to wishlist</button>
+      </div>
+      <div id="shop-list"></div>
+    </div>
+
+    <div class="sb-foot">
+      <div class="sb-foot-btns">
+        <button class="export-btn" onclick="exportData()">⬇ Export outfit history</button>
+        <label class="export-btn" style="cursor:pointer;">⬆ Import outfit history<input type="file" id="import-file" accept=".json" onchange="importData(event)"></label>
+        <button class="clear-btn" style="font-size:11.5px;text-align:left;padding:2px 0;" onclick="clearChat()">↺ New conversation</button>
+      </div>
+    </div>
+  </div>
+
+  <div id="chat">
+    <div id="mob-head">
+      <h2>Style Agent</h2>
+      <button id="mob-log-btn" onclick="openModal()">+ Log outfit</button>
+    </div>
+    <div id="messages"></div>
+    <div id="chips"></div>
+    <div id="attach-preview"></div>
+    <div id="bar">
+      <button id="attach-btn" onclick="document.getElementById('attach-input').click()" title="Attach photo, PDF, Word, Excel, CSV...">
+        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21.44 11.05l-9.19 9.19a6 6 0 0 1-8.49-8.49l9.19-9.19a4 4 0 0 1 5.66 5.66l-9.2 9.19a2 2 0 0 1-2.83-2.83l8.49-8.48"/></svg>
+      </button>
+      <input type="file" id="attach-input" accept="image/*,.pdf,.xlsx,.xls,.csv,.doc,.docx,.txt" onchange="handleAttach(event)">
+      <textarea id="user-input" placeholder="Attach a file or ask about your outfit..." rows="1"></textarea>
+      <button id="send" disabled>
+        <svg viewBox="0 0 24 24"><path d="M2 21l21-9L2 3v7l15 2-15 2z"/></svg>
+      </button>
+    </div>
+  </div>
+</div>
+
+
+
+<!-- EXCEL IMPORT MODAL (removed) -->
+<div id="excel-modal" style="display:none!important;">
+  <!-- PHOTO LIGHTBOX -->
+<div id="photo-lightbox" onclick="closeLightbox()">
+  <img id="lightbox-img" src="" alt="Outfit photo">
+</div>
+
+<div id="mob-modal">
+  <div id="mob-modal-inner">
+    <button class="mob-close" onclick="closeModal()">×</button>
+    <h3>Log past outfit</h3>
+    <input type="date" class="bf-date" id="mob-log-date" style="width:100%;margin-bottom:7px;">
+    <select class="bf-select" id="mob-log-occasion" style="width:100%;margin-bottom:7px;">
+      <option value="">Occasion (optional)</option>
+      <option value="Regular office day">Regular office day</option>
+      <option value="Leadership meeting">Leadership meeting</option>
+      <option value="Client meeting">Client meeting</option>
+      <option value="Casual Friday">Casual Friday</option>
+      <option value="Weekend / casual">Weekend / casual</option>
+      <option value="Evening outing">Evening outing</option>
+    </select>
+    <textarea class="bf-text" id="mob-log-text" placeholder="e.g. Olive overshirt, navy polo, indigo jeans, brown loafers..." style="width:100%;"></textarea>
+    <button class="bf-btn" style="margin-top:7px;" onclick="saveMobEntry()">Add to log</button>
+  </div>
+</div>
+
+<script>
+// ─── DEFAULT WARDROBE ────────────────────────────────────────────────
+const DEFAULT_WARDROBE = {
+  tops:["White linen shirt","Navy polo","Charcoal polo","Light blue structured shirt","White structured shirt","Tan-olive overshirt (structured shoulders)"],
+  bottoms:["Dark indigo jeans (straight fit)","Black jeans (straight fit)","Dark chinos"],
+  shoes:["Brown loafers","Brown derby","Black sneakers"],
+  accessories:["Brown belt","Black belt","Brown leather watch strap","Black leather watch strap","JOHN JACOBS TR FLEX black/red glasses","JOHN JACOBS TR FLEX brown tortoiseshell glasses"]
+};
+
+// ─── PLANNER SYSTEM PROMPT ───────────────────────────────────────────
+const PLANNER_SYSTEM = `You are Style Agent's Wardrobe Rotation Planner for Prasoon Purbia.
+
+Your job: create a structured multi-day outfit plan. You are a wardrobe planning engine, not a conversational stylist.
+
+USER PROFILE:
+Name: Prasoon Purbia | Age: 39 | Location: Noida, UP
+Role: Team Leader, Naukri.com | Office: Business casual, jeans allowed
+Climate: Hot summers — breathable fabrics essential
+Meetings: Frequent leadership and senior stakeholder meetings
+
+WARDROBE RULES:
+- Use ONLY items from the wardrobe inventory provided. Never invent clothing.
+- Apply the 10-day repeat rule for tops (same top not within 10 days).
+- Apply the 30-day repeat rule for full outfits.
+- Check the outfit history provided and avoid repeats accordingly.
+
+ACCESSORY RULE (NON-NEGOTIABLE):
+STEP 1: Determine shoe color.
+STEP 2: Brown shoes (loafers/derby) → brown belt + brown watch strap + brown tortoiseshell glasses ONLY.
+STEP 3: Black shoes (sneakers) → black belt + black watch strap + black/red glasses ONLY.
+Never mix. Brown shoes + black belt = error. Verify every row before outputting.
+
+STYLE PRINCIPLES:
+- Spread strong items intelligently — avoid visual monotony across the week
+- Use derby shoes for leadership-ready days, sneakers only for casual days
+- Prioritize breathable fabrics in hot weather (April–July in Noida)
+- Vary tops, bottoms, and shoes across days
+- Dark inner layers for slimming contrast
+- Open overshirt layering creates vertical lines
+
+STRICT OUTPUT RULE:
+Return ONLY a valid JSON array. No markdown. No backticks. No explanation outside JSON.
+
+Schema (one object per day):
+[
+  {
+    "day": "Monday",
+    "date": "14 Apr",
+    "occasion": "Regular office day",
+    "top": "item name",
+    "bottom": "item name",
+    "shoes": "item name",
+    "belt": "Brown belt or Black belt",
+    "watch_strap": "Brown leather or Black leather",
+    "glasses": "Brown tortoiseshell or Black/red",
+    "why": "One sentence max — why this combination works"
+  }
+]`;
+
+// ─── MAIN AGENT SYSTEM PROMPT ────────────────────────────────────────
+function buildMainSystem(wardrobeStr, historyStr, seasonStr) {
+  return `You are Prasoon's personal AI style agent. You know his complete wardrobe, track outfit history, and ensure he always looks sharp. Be warm, confident, and direct — like a trusted friend who is also a great stylist.
+
+PRASOON'S PROFILE:
+Age 39, Noida. Business casual office — jeans allowed daily. ${seasonStr}
+Team leader with frequent senior leadership meetings.
+WORK SCHEDULE: Monday to Friday ONLY. Saturday and Sunday are non-office days.
+
+WEEKEND RULE (critical):
+- On weekends, ALWAYS ask about Prasoons plans before recommending an outfit.
+- Do not assume he is going out or needs to look presentable.
+- Home day: recommend very casual comfort wear — track pants, shorts, loose tee, house slippers. Style rules do not apply. Comfort is the only goal.
+- Going out casually (market, errands, lunch): smart casual — dark jeans, polo or tee, loafers or sneakers.
+- Going somewhere specific (dinner, event, travel): ask more and dress accordingly.
+- Never recommend office outfits, derby shoes, or structured layering on weekends unless he explicitly has a professional event.
+
+WEEKDAY RULE: Monday to Friday recommend office-appropriate business casual outfits.
+
+CURRENT WARDROBE:
+${wardrobeStr}
+
+COLOR PALETTE: Navy, charcoal, black, olive, tan, white, light blue, mid-grey. Never suggest bright colours, pastels, or light washes.
+
+STYLE PRINCIPLES:
+1. Open overshirt/jacket layering creates vertical lines — slimming and sharp.
+2. Dark inner layer under lighter outer = midsection slimming contrast.
+3. Structured shoulders frame the upper body powerfully.
+4. Straight-fit dark jeans or chinos anchor every outfit.
+5. Derby shoes elevate presence — use for leadership meetings.
+6. Sneakers only for casual/Friday/weekend days.
+7. Fitted shirt, not boxy — size 40-41 / M-L.
+8. ${seasonStr.includes('hot') ? 'HOT WEATHER ACTIVE: Prioritise breathable fabrics. White linen shirt is the top pick. Skip heavy layers.' : 'Layer when appropriate for the season.'}
+
+ACCESSORY RULE (NON-NEGOTIABLE — DETERMINE SHOE COLOR FIRST, THEN LOCK ALL ACCESSORIES):
+STEP 1: Decide which shoes to wear.
+STEP 2: If shoes are brown (loafers or derby) → ONLY brown belt + brown watch strap + brown tortoiseshell glasses. No exceptions.
+STEP 3: If shoes are black (sneakers) → ONLY black belt + black watch strap + black/red glasses. No exceptions.
+NEVER mix accessory colors. Brown shoes + black belt = wrong. Always.
+
+CONFIDENCE RULE: You are the style expert. If Prasoon pushes back on a correct recommendation, hold your position with evidence. Only change your recommendation if new factual information is provided (e.g. a different date, a different occasion). Never reverse a correct answer simply because you are questioned.
+
+DATE RULE: The date and day provided in the user message is the confirmed IST date. Trust it completely. Do not recalculate or second-guess the day.
+
+REPEAT RULES (check history before every recommendation):
+- Same top within last 10 days: DO NOT recommend
+- Same full outfit within last 30 days: DO NOT recommend
+- Reference history actively: "you wore the olive overshirt 3 days ago, so today let's go with..."
+
+${historyStr}
+
+RESPONSE FORMAT — every outfit recommendation MUST include:
+1. THE LOOK: Top → Bottom → Shoes → Belt → Watch strap → Glasses
+2. WHY IT WORKS: Exactly 2 lines of style logic (write this section starting with "WHY IT WORKS")
+3. AVOID TODAY: 2-3 specific things to avoid (write this section starting with "AVOID TODAY")
+
+Always ask one proactive follow-up question. Keep responses concise.`;
+}
+
+// ─── ADVISOR SYSTEM ──────────────────────────────────────────────────
+const ADVISOR_SYSTEM = `You are Style Agent's Wardrobe Upgrade Advisor for Prasoon Purbia.
+
+Evaluate wardrobe performance: what to keep, use more, rotate less, upgrade soon, buy next.
+Think in terms of wardrobe ROI, outfit repeat reduction, meeting readiness, hot-weather practicality, body-flattering structure.
+Never suggest buying for novelty. Stay within navy, charcoal, black, olive, tan, white, light blue, mid-grey palette.
+
+Classify each item into EXACTLY ONE: KEEP | USE_MORE | ROTATE_LESS | UPGRADE_SOON | BUY_NEXT
+Evaluate using: usage_frequency, outfit_utility, style_strength, occasion_relevance, replacement_need, upgrade_roi.
+
+Return ONLY valid JSON array. No markdown. No backticks. No explanation outside JSON.
+Format: [{"item":"name","category":"tops/bottoms/shoes/accessories","verdict":"KEEP","reason":"2 sentence reason"}]`;
+
+// ─── STATE ───────────────────────────────────────────────────────────
+let apiKey='', chatHistory=[], busy=false, lastOccasion='Regular office day';
+
+// ─── IST DATE HELPERS (uses Intl API — works correctly regardless of system timezone) ──
+function todayIST(){
+  return new Date().toLocaleDateString('en-CA',{timeZone:'Asia/Kolkata'}); // returns YYYY-MM-DD
+}
+function nowIST(){
+  const s=new Date().toLocaleString('en-CA',{timeZone:'Asia/Kolkata',hour12:false});
+  return new Date(s);
+}
+function dayNameIST(){
+  return new Date().toLocaleDateString('en-IN',{timeZone:'Asia/Kolkata',weekday:'long'});
+}
+function dayOfWeekIST(){
+  return new Date(new Date().toLocaleString('en-CA',{timeZone:'Asia/Kolkata'})).getDay();
+}
+function monthIST(){
+  return new Date(new Date().toLocaleDateString('en-CA',{timeZone:'Asia/Kolkata'})).getMonth();
+}
+
+// ─── DOM ─────────────────────────────────────────────────────────────
+const keyIn=document.getElementById('key-in');
+const startBtn=document.getElementById('start-btn');
+const setupEl=document.getElementById('setup');
+const msgs=document.getElementById('messages');
+const chipsEl=document.getElementById('chips');
+const inputEl=document.getElementById('user-input');
+const sendBtn=document.getElementById('send');
+
+// ─── BOOT ────────────────────────────────────────────────────────────
+// ─── GUEST ACCESS ────────────────────────────────────────────────────
+// Guest password and key are stored in localStorage by the owner
+// Guests see password field; owner sees API key field
+// Both ultimately set apiKey and launch the app
+
+function getGuestConfig(){
+  try{ return JSON.parse(localStorage.getItem('sa_guest')||'null'); }catch{ return null; }
+}
+
+function launchApp(key){
+  apiKey = key;
+  setupEl.classList.add('gone');
+  setTimeout(()=>setupEl.style.display='none',420);
+  initDates(); renderWardrobePanel(); renderHistory(); buildInsights(); renderShopList(); boot();
+  // Show admin panel to owner (has API key)
+  if(key.startsWith('sk-')){
+    document.getElementById('admin-panel').style.display='block';
+  }
+}
+
+// Show guest section if guest access is configured
+const guestConfig = getGuestConfig();
+if(guestConfig && guestConfig.password){
+  document.getElementById('guest-section').style.display='block';
+  document.getElementById('guest-divider').style.display='flex';
+}
+
+// Owner login
+const savedKey=localStorage.getItem('sa_key');
+if(savedKey){keyIn.value=savedKey;}
+keyIn.addEventListener('input',()=>{}); // handled by click
+keyIn.addEventListener('paste',()=>{});
+startBtn.addEventListener('click', handleOwnerLogin);
+
+function handleOwnerLogin(){
+  const field = document.getElementById('key-in');
+  const val = field ? field.value.trim() : '';
+  if(!val || val.length < 10){
+    alert('Please enter your Anthropic API key (starts with sk-ant-)');
+    return;
+  }
+  localStorage.setItem('sa_key', val);
+  launchApp(val);
+}
+
+// Guest login
+const guestPwIn=document.getElementById('guest-pw-in');
+const guestBtn=document.getElementById('guest-btn');
+const guestError=document.getElementById('guest-error');
+if(guestPwIn){
+  guestPwIn.addEventListener('input',()=>{
+    guestBtn.disabled=!guestPwIn.value.trim();
+    guestError.classList.remove('visible');
+  });
+}
+if(guestBtn){
+  guestBtn.addEventListener('click',()=>{
+    const cfg=getGuestConfig();
+    if(!cfg){ guestError.textContent='Guest access not configured.'; guestError.classList.add('visible'); return; }
+    if(guestPwIn.value.trim()===cfg.password){
+      guestError.classList.remove('visible');
+      if(!cfg.k){ guestError.textContent='Guest access not fully set up. Ask Prasoon to re-enable it.'; guestError.classList.add('visible'); return; }
+      try {
+        const ownerKey = atob(cfg.k);
+        launchApp(ownerKey);
+      } catch(e) {
+        guestError.textContent='Something went wrong. Ask Prasoon to re-enable guest access.';
+        guestError.classList.add('visible');
+      }
+    } else {
+      guestError.textContent='Incorrect password. Try again.';
+      guestError.classList.add('visible');
+      guestPwIn.value='';
+    }
+  });
+  guestPwIn && guestPwIn.addEventListener('keydown', e => {
+    if(e.key==='Enter') guestBtn.click();
+  });
+}
+
+// Auto-launch if owner key saved
+if(savedKey){ initDates(); renderWardrobePanel(); renderHistory(); buildInsights(); }
+
+// ─── ADMIN FUNCTIONS ──────────────────────────────────────────────────
+function toggleAdminBox(){
+  document.getElementById('admin-box').classList.toggle('open');
+  updateAdminStatus();
+}
+
+function updateAdminStatus(){
+  const cfg=getGuestConfig();
+  const el=document.getElementById('admin-status');
+  if(cfg && cfg.password){
+    el.innerHTML=`Guest access <strong>active</strong><br>Password: <strong>${cfg.password}</strong><br><br>Share this URL + password with guests.`;
+  } else {
+    el.innerHTML='Guest access is currently <strong style="color:var(--muted)">disabled</strong>.';
+  }
+}
+
+function saveGuestAccess(){
+  const pw=document.getElementById('admin-guest-pw').value.trim();
+  if(!pw){ alert('Enter a guest password first.'); return; }
+  if(!apiKey){ alert('You must be logged in as owner first before enabling guest access.'); return; }
+  // Encode the owner key so it is not plain text in storage
+  const encoded = btoa(apiKey);
+  localStorage.setItem('sa_guest', JSON.stringify({password:pw, k:encoded}));
+  document.getElementById('guest-section').style.display='block';
+  document.getElementById('guest-divider').style.display='flex';
+  updateAdminStatus();
+  alert('Guest access enabled!\nPassword to share: ' + pw + '\n\nAnyone with this password can now open the app without an API key.');
+}
+
+function clearGuestAccess(){
+  localStorage.removeItem('sa_guest');
+  document.getElementById('guest-section').style.display='none';
+  document.getElementById('guest-divider').style.display='none';
+  updateAdminStatus();
+  alert('Guest access revoked. Guests can no longer log in.');
+}
+
+function initDates(){
+  const today=todayIST();
+  ['log-date','mob-log-date'].forEach(id=>{const el=document.getElementById(id);if(el)el.value=today;});
+}
+
+// ─── TABS ────────────────────────────────────────────────────────────
+function switchTab(tab){
+  const tabs=['wardrobe','log','insights','advisor','shop'];
+  document.querySelectorAll('.sb-tab').forEach((t,i)=>t.classList.toggle('active',tabs[i]===tab));
+  tabs.forEach(t=>document.getElementById('panel-'+t).classList.toggle('active',t===tab));
+  if(tab==='insights')buildInsights();
+  if(tab==='shop')renderShopList();
+}
+
+// ─── WARDROBE ────────────────────────────────────────────────────────
+function getWardrobe(){try{return JSON.parse(localStorage.getItem('sa_wardrobe')||'null')||JSON.parse(JSON.stringify(DEFAULT_WARDROBE));}catch{return JSON.parse(JSON.stringify(DEFAULT_WARDROBE));}}
+function saveWardrobe(w){localStorage.setItem('sa_wardrobe',JSON.stringify(w));}
+
+function renderWardrobePanel(){
+  const w=getWardrobe();
+  ['tops','bottoms','shoes','accessories'].forEach(cat=>{
+    const el=document.getElementById('list-'+cat);
+    if(!el)return;
+    el.innerHTML=w[cat].map((item,i)=>`
+      <div class="w-item-row">
+        <div class="wdot" style="background:var(--accent)"></div>
+        <span class="w-item-text">${item}</span>
+        <button class="w-remove" onclick="removeWardrobeItem('${cat}',${i})">×</button>
+      </div>`).join('')||'<div style="font-size:12px;color:var(--muted);padding:4px 0;">No items</div>';
+  });
+}
+
+function addWardrobeItem(){
+  const cat=document.getElementById('new-category').value;
+  const item=document.getElementById('new-item').value.trim();
+  if(!item)return;
+  const w=getWardrobe(); w[cat].push(item); saveWardrobe(w);
+  document.getElementById('new-item').value=''; renderWardrobePanel();
+}
+
+function removeWardrobeItem(cat,idx){
+  const w=getWardrobe(); w[cat].splice(idx,1); saveWardrobe(w); renderWardrobePanel();
+}
+
+function getWardrobeString(){
+  const w=getWardrobe();
+  return `Tops: ${w.tops.join(', ')}\nBottoms: ${w.bottoms.join(', ')}\nShoes: ${w.shoes.join(', ')}\nAccessories: ${w.accessories.join(', ')}`;
+}
+
+// ─── OUTFIT LOG ──────────────────────────────────────────────────────
+function getLog(){try{return JSON.parse(localStorage.getItem('outfit_log')||'[]');}catch{return[];}}
+function setLog(l){localStorage.setItem('outfit_log',JSON.stringify(l));}
+function daysBetween(d1,d2){return Math.round(Math.abs((new Date(d2)-new Date(d1))/86400000));}
+
+function autoLog(outfitText,occasion){
+  const today=todayIST();
+  const log=getLog();
+  const idx=log.findIndex(e=>e.date===today);
+  const entry={date:today,outfit:outfitText,occasion:occasion||'',source:'auto'};
+  if(idx>=0)log[idx]=entry;else log.unshift(entry);
+  log.sort((a,b)=>b.date.localeCompare(a.date));
+  setLog(log);renderHistory();buildInsights();
+}
+
+function saveEntry(){
+  const date=document.getElementById('log-date').value;
+  const outfit=document.getElementById('log-text').value.trim();
+  const occasion=document.getElementById('log-occasion').value;
+  if(!date||!outfit)return;
+  const log=getLog();
+  const idx=log.findIndex(e=>e.date===date);
+  const entry={date,outfit,occasion,source:'manual'};
+  if(idx>=0)log[idx]=entry;else log.unshift(entry);
+  log.sort((a,b)=>b.date.localeCompare(a.date));
+  setLog(log);document.getElementById('log-text').value='';renderHistory();buildInsights();
+}
+
+function saveMobEntry(){
+  const date=document.getElementById('mob-log-date').value;
+  const outfit=document.getElementById('mob-log-text').value.trim();
+  const occasion=document.getElementById('mob-log-occasion').value;
+  if(!date||!outfit)return;
+  const log=getLog();
+  const idx=log.findIndex(e=>e.date===date);
+  const entry={date,outfit,occasion,source:'manual'};
+  if(idx>=0)log[idx]=entry;else log.unshift(entry);
+  log.sort((a,b)=>b.date.localeCompare(a.date));
+  setLog(log);document.getElementById('mob-log-text').value='';closeModal();renderHistory();buildInsights();
+}
+
+function deleteEntry(date){setLog(getLog().filter(e=>e.date!==date));renderHistory();}
+
+function renderHistory(){
+  const log=getLog();
+  const list=document.getElementById('history-list');
+  if(!list)return;
+  if(!log.length){list.innerHTML='<div class="no-history">No outfits logged yet.<br>Recommendations auto-log here.</div>';return;}
+  list.innerHTML=log.map(e=>{
+    const d=new Date(e.date+'T00:00:00');
+    const label=d.toLocaleDateString('en-IN',{weekday:'short',day:'numeric',month:'short',year:'2-digit'});
+    const sourceLabel = e.source==='auto'?'✓ auto-logged':e.source==='plan'?'✓ from plan':'added manually';
+    const ratingHtml = starsHtml(e.date, e.rating);
+    const photoHtml = e.photo
+      ? `<img class="h-photo" src="${e.photo}" alt="Outfit photo" onclick="openLightbox('${e.photo}')">`
+      : `<div class="h-photo-placeholder">
+           <label class="h-add-photo">
+             📷 Add photo
+             <input type="file" class="h-photo-input" accept="image/*" capture="environment" onchange="attachPhotoToEntry('${e.date}', this)">
+           </label>
+         </div>`;
+    return`<div class="h-entry" id="entry-${e.date}">
+      <div class="h-date">${label}</div>
+      ${e.occasion?`<div class="h-occasion">${e.occasion}</div>`:''}
+      <div class="h-outfit" style="padding-right:22px;">${e.outfit}</div>
+      <div class="h-source">${sourceLabel}</div>
+      ${ratingHtml}
+      ${photoHtml}
+      <button class="h-del" onclick="deleteEntry('${e.date}')">×</button>
+    </div>`;
+  }).join('');
+}
+
+function buildHistoryBlock(){
+  const log=getLog();
+  if(!log.length)return'No outfit history yet.';
+  const today=todayIST();
+  const lines=log.slice(0,45).map(e=>{
+    const d=new Date(e.date+'T00:00:00');
+    const label=d.toLocaleDateString('en-IN',{weekday:'long',day:'numeric',month:'long'});
+    const days=daysBetween(e.date,today);
+    const occ=e.occasion?` [${e.occasion}]`:'';
+    return`${label} (${days} days ago)${occ}: ${e.outfit}`;
+  });
+  return`OUTFIT HISTORY — CHECK BEFORE RECOMMENDING:\nRepeat rules: same top=10 day wait | same full outfit=30 day wait\n${lines.join('\n')}`;
+}
+
+// ─── SEASON ──────────────────────────────────────────────────────────
+function getSeasonContext(){
+  const m=monthIST();
+  if(m>=3&&m<=6)return"Noida summer is active (April–July) — very hot, 32–42°C. Breathable fabrics essential. Avoid heavy layers.";
+  if(m>=7&&m<=9)return"Monsoon in Noida — humid. Light fabrics preferred. Avoid suede shoes.";
+  if(m>=10||m<=1)return"Winter in Noida — cool mornings. Layering works well.";
+  return"Transition season in Noida — moderate temperatures.";
+}
+
+// ─── INSIGHTS ────────────────────────────────────────────────────────
+function buildInsights(){
+  const log=getLog();
+  const container=document.getElementById('insights-content');
+  if(!container)return;
+  if(log.length<1){container.innerHTML='<div class="insight-empty">No outfits logged yet.<br>Start chatting — every recommendation auto-logs here.</div>';return;}
+  if(log.length<3){
+    const today2=todayIST();
+    const recent=log.slice(0,3);
+    let html='<div class="insight-card"><h4>Recent outfits</h4>';
+    recent.forEach(e=>{
+      const d=new Date(e.date+'T00:00:00');
+      const label=d.toLocaleDateString('en-IN',{weekday:'short',day:'numeric',month:'short'});
+      const days=daysBetween(e.date,today2);
+      html+=`<div class="insight-row"><span>${label}</span><span class="insight-val">${e.outfit.split(',')[0]}</span></div>`;
+    });
+    html+='</div><div class="insight-empty" style="padding:12px 0;">Log 3+ outfits to unlock full pattern insights.</div>';
+    container.innerHTML=html;return;
+  }
+  const today=todayIST();
+  const recent30=log.filter(e=>daysBetween(e.date,today)<=30);
+  const workingLog=recent30.length>=1?recent30:log.slice(0,10);
+  const w=getWardrobe();
+  const topCounts={},shoeTypeCounts={brown:0,black:0};
+  const freshnessMap={};
+
+  workingLog.forEach(e=>{
+    const o=e.outfit.toLowerCase();
+    w.tops.forEach(t=>{if(o.includes(t.toLowerCase().split(' ')[0])){topCounts[t]=(topCounts[t]||0)+1;}});
+    if(o.includes('brown'))shoeTypeCounts.brown++;
+    if(o.includes('black sneaker'))shoeTypeCounts.black++;
+  });
+  w.tops.forEach(t=>{
+    const found=log.find(e=>e.outfit.toLowerCase().includes(t.toLowerCase().split(' ')[0]));
+    freshnessMap[t]=found?daysBetween(found.date,today):999;
+  });
+
+  const sortedTops=Object.entries(topCounts).sort((a,b)=>b[1]-a[1]);
+  const underused=w.tops.filter(t=>(topCounts[t]||0)===0&&freshnessMap[t]>14);
+  const overused=sortedTops.filter(([,c])=>c>=3);
+  const occasionCounts={};
+  workingLog.forEach(e=>{if(e.occasion){occasionCounts[e.occasion]=(occasionCounts[e.occasion]||0)+1;}});
+  const topOccasion=Object.entries(occasionCounts).sort((a,b)=>b[1]-a[1])[0];
+
+  let html='';
+  html+=`<div class="insight-card"><h4>Top piece usage (${workingLog.length} outfits tracked)</h4>`;
+  if(sortedTops.length){
+    sortedTops.forEach(([item,count])=>{
+      const badge=count>=4?'<span class="insight-badge badge-overuse">overused</span>':count>=2?'<span class="insight-badge badge-good">balanced</span>':'<span class="insight-badge badge-underuse">fresh</span>';
+      html+=`<div class="insight-row"><span>${item.replace(' (structured shoulders)','').replace(' (straight fit)','')}</span><div style="display:flex;align-items:center;gap:6px;">${badge}<span class="insight-val">${count}x</span></div></div>`;
+    });
+  }else{html+='<div style="font-size:12px;color:var(--muted);padding:4px 0;">No data yet</div>';}
+  html+=`</div>`;
+
+  if(underused.length){
+    html+=`<div class="insight-card"><h4>Sitting idle — bring these back</h4>`;
+    underused.forEach(t=>{
+      const days=freshnessMap[t];
+      html+=`<div class="insight-row"><span>${t.replace(' (structured shoulders)','')}</span><span class="insight-val">${days===999?'never worn':days+' days ago'}</span></div>`;
+    });
+    html+=`</div>`;
+  }
+
+  const totalShoes=shoeTypeCounts.brown+shoeTypeCounts.black;
+  if(totalShoes>0){
+    const bPct=Math.round((shoeTypeCounts.brown/totalShoes)*100);
+    html+=`<div class="insight-card"><h4>Accessory palette split</h4>
+      <div class="insight-row"><span>Brown days</span><span class="insight-val">${bPct}%</span></div>
+      <div class="insight-row"><span>Black days</span><span class="insight-val">${100-bPct}%</span></div>
+    </div>`;
+  }
+  if(topOccasion){
+    html+=`<div class="insight-card"><h4>Most common occasion</h4>
+      <div class="insight-row"><span>${topOccasion[0]}</span><span class="insight-val">${topOccasion[1]} times</span></div>
+    </div>`;
+  }
+  if(overused.length){
+    html+=`<div class="insight-card" style="border-color:rgba(220,38,38,0.2);background:var(--red-soft);">
+      <h4 style="color:var(--red);">Rotation alert</h4>`;
+    overused.forEach(([item,count])=>{
+      html+=`<div class="insight-row"><span>${item.replace(' (structured shoulders)','')}</span><span style="font-size:12px;color:var(--red);">${count}x in 30 days — rest it</span></div>`;
+    });
+    html+=`</div>`;
+  }
+  container.innerHTML=html;
+}
+
+// ─── ADVISOR ─────────────────────────────────────────────────────────
+async function runAdvisor(){
+  const btn=document.getElementById('advisor-run-btn');
+  const results=document.getElementById('advisor-results');
+  btn.disabled=true;
+  results.innerHTML='<div class="advisor-loading">Analysing your wardrobe... 10–15 seconds.</div>';
+  const log=getLog();
+  const today=todayIST();
+  const histLines=log.slice(0,30).map(e=>`${e.date} (${daysBetween(e.date,today)} days ago): ${e.outfit}`).join('\n');
+  const userMsg=`My wardrobe:\n${getWardrobeString()}\n\nOutfit history:\n${histLines||'No history yet.'}\n\nAnalyse every item and return your verdict JSON array.`;
+  try{
+    const res=await fetch('https://api.anthropic.com/v1/messages',{
+      method:'POST',
+      headers:{'Content-Type':'application/json','x-api-key':apiKey,'anthropic-version':'2023-06-01','anthropic-dangerous-direct-browser-access':'true'},
+      body:JSON.stringify({model:'claude-sonnet-4-20250514',max_tokens:2000,system:ADVISOR_SYSTEM,messages:[{role:'user',content:userMsg}]})
+    });
+    const data=await res.json();
+    if(data.error)throw new Error(data.error.message);
+    const text=data.content?.find(b=>b.type==='text')?.text||'[]';
+    const verdicts=JSON.parse(text.replace(/```json|```/g,'').trim());
+    const vLabel={KEEP:'Keep',USE_MORE:'Use More',ROTATE_LESS:'Rotate Less',UPGRADE_SOON:'Upgrade Soon',BUY_NEXT:'Buy Next'};
+    const vClass={KEEP:'v-keep',USE_MORE:'v-use_more',ROTATE_LESS:'v-rotate_less',UPGRADE_SOON:'v-upgrade_soon',BUY_NEXT:'v-buy_next'};
+    results.innerHTML=verdicts.map(v=>{
+      const isBuyNext = v.verdict==='BUY_NEXT';
+      const safeItem = encodeURIComponent(v.item||'');
+      const safeWhy = encodeURIComponent((v.reason||'').substring(0,80));
+      return`<div class="verdict-card">
+        <div class="verdict-top">
+          <div><div class="verdict-item">${v.item}</div><div class="verdict-cat">${v.category}</div></div>
+          <span class="verdict-badge ${vClass[v.verdict]||'v-keep'}">${vLabel[v.verdict]||v.verdict}</span>
+        </div>
+        <div class="verdict-reason">${v.reason}</div>
+        ${isBuyNext?`<button data-item="${safeItem}" data-why="${safeWhy}" style="margin-top:8px;width:100%;background:var(--accent-soft);color:var(--accent-dark);border:1px solid rgba(217,119,87,0.3);border-radius:6px;padding:6px;font-size:11.5px;font-weight:500;font-family:var(--font);cursor:pointer;" onclick="addShopItemFromAdvisor(this)">+ Add to Shopping List</button>`:''}
+      </div>`;
+    }).join('');
+  }catch(e){
+    results.innerHTML=`<div class="advisor-loading">Analysis failed — ${e.message||'try again'}</div>`;
+  }
+  btn.disabled=false;
+}
+
+// ─── PLAN REQUEST DETECTION ───────────────────────────────────────────
+function isPlanRequest(text){
+  const low=text.toLowerCase();
+  return(low.includes('plan')||low.includes('week')||low.includes('rotation')||low.includes('schedule'))&&
+    (low.includes('day')||low.includes('week')||low.includes('mon')||low.includes('days'));
+}
+
+function extractDays(text){
+  const low=text.toLowerCase();
+  if(low.includes('week')||low.includes('7'))return 7;
+  const match=text.match(/(\d+)\s*day/i);
+  if(match)return Math.min(parseInt(match[1]),7);
+  if(low.includes('three')||low.includes('3'))return 3;
+  if(low.includes('five')||low.includes('5'))return 5;
+  return 5;
+}
+
+// ─── PLAN TABLE RENDERER ──────────────────────────────────────────────
+function renderPlanTable(planData, numDays){
+  const shoeColor=(shoes)=>{
+    const s=shoes.toLowerCase();
+    if(s.includes('brown'))return'plan-shoe-brown';
+    if(s.includes('black'))return'plan-shoe-black';
+    return'';
+  };
+
+  let html=`<div class="plan-wrap">
+    <div class="plan-title">Wardrobe Rotation Plan — ${numDays}-Day</div>
+    <table class="plan-table">
+      <thead>
+        <tr>
+          <th>Day</th>
+          <th>Date</th>
+          <th>Occasion</th>
+          <th>Top</th>
+          <th>Bottom</th>
+          <th>Shoes</th>
+          <th>Belt</th>
+          <th>Watch Strap</th>
+          <th>Glasses</th>
+          <th>Why it works</th>
+        </tr>
+      </thead>
+      <tbody>`;
+
+  planData.forEach(row=>{
+    const sc=shoeColor(row.shoes||'');
+    html+=`<tr>
+      <td class="plan-day-cell">${row.day||''}</td>
+      <td class="plan-date-cell">${row.date||''}</td>
+      <td><span class="plan-occ-pill">${row.occasion||'Office'}</span></td>
+      <td>${row.top||''}</td>
+      <td>${row.bottom||''}</td>
+      <td class="${sc}">${row.shoes||''}</td>
+      <td>${row.belt||''}</td>
+      <td>${row.watch_strap||''}</td>
+      <td>${row.glasses||''}</td>
+      <td class="plan-why">${row.why||''}</td>
+    </tr>`;
+  });
+
+  html+=`</tbody></table>
+    <button class="plan-log-btn" onclick="logFullPlan(${JSON.stringify(planData).replace(/"/g,'&quot;')})">✓ Log this plan to outfit history</button>
+  </div>`;
+  return html;
+}
+
+function logFullPlan(planData){
+  const log=getLog();
+  const today=nowIST();
+  planData.forEach((row,i)=>{
+    const d=new Date(today);
+    d.setDate(today.getDate()+i);
+    const dateStr=d.toISOString().split('T')[0];
+    const outfitStr=[row.top,row.bottom,row.shoes,row.belt,row.watch_strap,row.glasses].filter(Boolean).join(', ');
+    const idx=log.findIndex(e=>e.date===dateStr);
+    const entry={date:dateStr,outfit:outfitStr,occasion:row.occasion||'',source:'plan'};
+    if(idx>=0)log[idx]=entry;else log.push(entry);
+  });
+  log.sort((a,b)=>b.date.localeCompare(a.date));
+  setLog(log);renderHistory();buildInsights();
+  alert('Plan logged to your outfit history!');
+}
+
+// ─── CHAT HELPERS ────────────────────────────────────────────────────
+function fmt(t){return t.replace(/\*\*(.*?)\*\*/g,'<strong>$1</strong>').replace(/\n/g,'<br>');}
+
+function parseOutfitBlocks(text){
+  const whyMatch=text.match(/WHY IT WORKS[:\s]*([\s\S]*?)(?=AVOID TODAY|$)/i);
+  const avoidMatch=text.match(/AVOID TODAY[:\s]*([\s\S]*?)$/i);
+  const why=whyMatch?whyMatch[1].trim().replace(/\n/g,' '):null;
+  const avoid=avoidMatch?avoidMatch[1].trim().replace(/\n/g,' '):null;
+  let main=text;
+  if(whyMatch)main=main.replace(whyMatch[0],'');
+  if(avoidMatch)main=main.replace(avoidMatch[0],'');
+  return{main:main.trim(),why,avoid};
+}
+
+function addMsg(role,rawText,chips,showLog,planHtml){
+  chipsEl.innerHTML='';
+  const row=document.createElement('div');row.className='msg '+role;
+  const av=document.createElement('div');av.className='m-av';
+  av.textContent=role==='agent'?'✦':'P';
+  const bub=document.createElement('div');bub.className='bubble';
+
+  if(planHtml){
+    bub.innerHTML=planHtml;
+  }else{
+    const{main,why,avoid}=parseOutfitBlocks(fmt(rawText));
+    bub.innerHTML=main;
+    if(why){
+      const wb=document.createElement('div');wb.className='why-block';
+      wb.innerHTML=`<div class="why-label">Why it works</div><div class="why-text">${why}</div>`;
+      bub.appendChild(wb);
+    }
+    if(avoid){
+      const ab=document.createElement('div');ab.className='avoid-block';
+      ab.innerHTML=`<div class="avoid-label">Avoid today</div><div class="avoid-text">${avoid}</div>`;
+      bub.appendChild(ab);
+    }
+    if(showLog){
+      const badge=document.createElement('div');badge.className='autolog-tag';
+      badge.textContent='✓ logged to outfit history';
+      bub.appendChild(badge);
+      // Photo button
+      const todayDate=todayIST();
+      const photoBtn=document.createElement('button');
+      photoBtn.className='outfit-photo-btn';
+      photoBtn.innerHTML='📷 Add today\'s photo';
+      photoBtn.onclick=()=>attachPhotoFromChat(todayDate);
+      bub.appendChild(photoBtn);
+      // Share card button
+      const shareBtn=document.createElement('button');
+      shareBtn.className='share-card-btn';
+      shareBtn.innerHTML='🔗 Share outfit card';
+      const outfitSnap=rawText||'';
+      shareBtn.onclick=()=>generateShareCard(outfitSnap, todayDate);
+      bub.appendChild(shareBtn);
+    }
+  }
+
+  row.appendChild(av);row.appendChild(bub);msgs.appendChild(row);
+  if(chips)chips.forEach(c=>{
+    const b=document.createElement('button');b.className='chip';b.textContent=c;
+    b.onclick=()=>{if(!busy)go(c);};chipsEl.appendChild(b);
+  });
+  msgs.scrollTop=msgs.scrollHeight;
+}
+
+function showTyping(){
+  const row=document.createElement('div');row.className='msg agent';row.id='typ';
+  row.innerHTML='<div class="m-av">✦</div><div class="typing-b"><div class="tdot"></div><div class="tdot"></div><div class="tdot"></div></div>';
+  msgs.appendChild(row);msgs.scrollTop=msgs.scrollHeight;
+}
+function hideTyping(){const e=document.getElementById('typ');if(e)e.remove();}
+
+function isOutfitRecommendation(text){
+  const low=text.toLowerCase();
+  return['shirt','polo','linen','overshirt'].some(w=>low.includes(w))&&
+    ['jeans','chinos','trousers'].some(w=>low.includes(w))&&
+    ['loafers','derby','sneakers'].some(w=>low.includes(w));
+}
+
+function extractOutfit(text){
+  const lines=text.split('\n').filter(l=>l.trim());
+  const kw=['top','bottom','shoes','belt','watch','glasses','shirt','polo','jeans','overshirt','chino','loafer','derby','sneaker','linen'];
+  const found=lines.filter(l=>kw.some(k=>l.toLowerCase().includes(k)));
+  return found.length>=2?found.map(l=>l.replace(/^[\*\-\•→:]+\s*/,'')).join(' | '):text.substring(0,220).replace(/\n/g,' ');
+}
+
+function getChips(turn){
+  if(turn<=2)return['Office day today','Leadership meeting','Casual Friday','Give me a 5-day plan'];
+  if(turn<=6)return['Give me a week plan','Too hot for layers?','What\'s freshest?','Weekend outfit'];
+  return['Plan next 3 days','Show style stats','What haven\'t I worn?','Run wardrobe analysis'];
+}
+
+// ─── MAIN SEND ───────────────────────────────────────────────────────
+async function go(text){
+  if(!text.trim()||busy)return;
+  busy=true;sendBtn.disabled=true;
+  inputEl.value='';inputEl.style.height='auto';
+
+  if(text.toLowerCase().includes('meeting'))lastOccasion='Leadership meeting';
+  else if(text.toLowerCase().includes('client'))lastOccasion='Client meeting';
+  else if(text.toLowerCase().includes('casual')||text.toLowerCase().includes('friday'))lastOccasion='Casual Friday';
+  else if(text.toLowerCase().includes('weekend'))lastOccasion='Weekend / casual';
+  else if(text.toLowerCase().includes('evening'))lastOccasion='Evening outing';
+
+  const att = pendingAttachment;
+  const msgContent = buildMessageContent(text);
+  addMsgWithAttachment('user', text.replace(/\n/g,'<br>'), null, false, null, att);
+  clearAttachment();
+  chatHistory.push({role:'user', content: msgContent});
+  showTyping();
+
+  try{
+    // PLAN REQUEST — use planner system, render as table
+    if(isPlanRequest(text)){
+      const numDays=extractDays(text);
+      const log=getLog();
+      const today=todayIST();
+      const histLines=log.slice(0,30).map(e=>`${e.date} (${daysBetween(e.date,today)} days ago): ${e.outfit}`).join('\n');
+      const startDate=nowIST();
+      const planMsg=`Create a ${numDays}-day wardrobe rotation plan starting from ${startDate.toLocaleDateString('en-IN',{weekday:'long',day:'numeric',month:'long'})}.
+
+My wardrobe:
+${getWardrobeString()}
+
+Recent outfit history (respect the repeat rules):
+${histLines||'No history yet — plan freely.'}
+
+Season context: ${getSeasonContext()}
+
+Return exactly ${numDays} days in the JSON array.`;
+
+      const res=await fetch('https://api.anthropic.com/v1/messages',{
+        method:'POST',
+        headers:{'Content-Type':'application/json','x-api-key':apiKey,'anthropic-version':'2023-06-01','anthropic-dangerous-direct-browser-access':'true'},
+        body:JSON.stringify({model:'claude-sonnet-4-20250514',max_tokens:2000,system:PLANNER_SYSTEM,messages:[{role:'user',content:planMsg}]})
+      });
+      const data=await res.json();
+      if(data.error)throw new Error(data.error.message);
+      const raw=data.content?.find(b=>b.type==='text')?.text||'[]';
+      const planData=JSON.parse(raw.replace(/```json|```/g,'').trim());
+      chatHistory.push({role:'assistant',content:`Here is your ${numDays}-day wardrobe rotation plan.`});
+      hideTyping();
+      const tableHtml=renderPlanTable(planData,numDays);
+      addMsgWithAttachment('agent',null,getChips(chatHistory.length),false,tableHtml,null);
+
+    }else{
+      // NORMAL outfit/chat request
+      const res=await fetch('https://api.anthropic.com/v1/messages',{
+        method:'POST',
+        headers:{'Content-Type':'application/json','x-api-key':apiKey,'anthropic-version':'2023-06-01','anthropic-dangerous-direct-browser-access':'true'},
+        body:JSON.stringify({model:'claude-sonnet-4-20250514',max_tokens:1200,system:buildMainSystem(getWardrobeString(),buildHistoryBlock(),getSeasonContext()+' '+getWeatherContext()+' '+getRatingContext()),messages:chatHistory})
+      });
+      const data=await res.json();
+      if(data.error)throw new Error(data.error.message);
+      const reply=data.content?.find(b=>b.type==='text')?.text||'Something went wrong.';
+      chatHistory.push({role:'assistant',content:reply});
+      hideTyping();
+      const isOutfit=isOutfitRecommendation(reply);
+      if(isOutfit)autoLog(extractOutfit(reply),lastOccasion);
+      addMsgWithAttachment('agent',reply,getChips(chatHistory.length),isOutfit,null,null);
+    }
+  }catch(e){
+    hideTyping();
+    addMsgWithAttachment('agent','Connection issue — check your API key or try again.\n'+(e.message||''),null,false,null,null);
+  }
+  busy=false;sendBtn.disabled=!inputEl.value.trim();
+}
+
+// ─── DAILY BRIEF + BOOT ───────────────────────────────────────────────
+function buildDailyBrief(){
+  const log=getLog();
+  const today=nowIST();
+  const todayStr=today.toISOString().split('T')[0];
+  const dayName=today.toLocaleDateString('en-IN',{weekday:'long',day:'numeric',month:'long'});
+  const m=today.getMonth();
+  const dow=today.getDay();
+  const isWeekendDay=dow===0||dow===6;
+  const season=isWeekendDay?(m>=3&&m<=6?'Weekend · Hot':'Weekend'):(m>=3&&m<=6?'Hot summer':m>=7&&m<=9?'Monsoon':'Winter/mild');
+  const yesterday=log.find(e=>daysBetween(e.date,todayStr)===1);
+  const twoDaysAgo=log.find(e=>daysBetween(e.date,todayStr)===2);
+  const w=getWardrobe();
+  const freshTops=w.tops.filter(t=>{
+    const found=log.find(e=>e.outfit.toLowerCase().includes(t.toLowerCase().split(' ')[0]));
+    return!found||daysBetween(found.date,todayStr)>=10;
+  });
+
+  return`<div class="daily-brief" id="daily-brief-card">
+    <div class="brief-header">
+      <div class="brief-day">${dayName}</div>
+      <div class="brief-season">${season}</div>
+    </div>
+    <div class="brief-grid">
+      <div class="brief-item">
+        <div class="brief-item-label">Yesterday</div>
+        <div class="brief-item-val">${yesterday?yesterday.outfit.split(',')[0]:'No record'}</div>
+      </div>
+      <div class="brief-item">
+        <div class="brief-item-label">2 days ago</div>
+        <div class="brief-item-val">${twoDaysAgo?twoDaysAgo.outfit.split(',')[0]:'No record'}</div>
+      </div>
+    </div>
+    <div class="brief-weather" id="weather-block">
+      <div class="brief-weather-icon">🌡️</div>
+      <div class="brief-weather-info">
+        <div class="brief-weather-temp">Fetching Noida weather...</div>
+      </div>
+    </div>
+    ${freshTops.length?`<div class="brief-fresh">
+      <div class="brief-fresh-label">Fresh tops ready today</div>
+      <div class="brief-fresh-items">${freshTops.slice(0,4).map(t=>`<span class="fresh-pill">${t.replace(' (structured shoulders)','').replace(' (straight fit)','')}</span>`).join('')}</div>
+    </div>`:''}
+    <div class="brief-primary">
+      <div class="brief-primary-label">Today's recommendation</div>
+      <div class="brief-loading" id="brief-rec">Loading...</div>
+    </div>
+  </div>`;
+}
+
+let booting = false;
+async function boot(){
+  if(booting) return;
+  booting = true;
+  fetchWeather();
+  // Only add brief if not already present
+  if(!document.getElementById('daily-brief-card')){
+    const briefDiv=document.createElement('div');
+    briefDiv.innerHTML=buildDailyBrief();
+    msgs.appendChild(briefDiv.firstChild);
+  }
+  showTyping();
+
+  const dayName=dayNameIST();
+  const todayDateStr=todayIST();
+  const isMon=dayOfWeekIST()===1;
+  const isFri=dayOfWeekIST()===5;
+  const isSat=dayOfWeekIST()===6;
+  const isSun=dayOfWeekIST()===0;
+  const isWeekend=isSat||isSun;
+  const dayCtx=isMon?'It is Monday — start the week sharp and structured.':isFri?'It is Friday — slightly relaxed is acceptable but still office-appropriate.':isSat?'It is SATURDAY — a non-office day.':isSun?'It is SUNDAY — a non-office day.':'';
+  const bootMsg=isWeekend
+  ? `TODAY IS ${dayName.toUpperCase()}, ${todayDateStr} (IST). This is confirmed — do not second-guess it.
+
+It is a weekend. Prasoon works Monday to Friday only — no office today.
+
+WEEKEND GREETING RULE: Do NOT immediately recommend an outfit. Instead, greet Prasoon warmly, acknowledge its the weekend, and ask ONE question to understand his plans before recommending anything. Examples of what to ask:
+- Are you staying home, heading out, or have plans?
+- Is it a relaxed home day or going somewhere?
+
+Only after he answers should you recommend an outfit appropriate for that context. Home = very casual (track pants, shorts, loose tee — comfort over style). Going out = smart casual. Event = dress accordingly.`
+  : `TODAY IS ${dayName.toUpperCase()}, ${todayDateStr} (IST). This is the confirmed current date — do not second-guess it even if challenged. ${dayCtx}
+
+Prasoon works Monday to Friday. Today is a weekday — recommend office-appropriate business casual.
+
+Based on my outfit history and wardrobe, give me:
+1) THE LOOK: Best outfit for today — Top, Bottom, Shoes, Belt, Watch strap, Glasses (determine shoe color first, then ALL accessories must match that shoe color family without exception)
+2) WHY IT WORKS (exactly 2 lines)
+3) AVOID TODAY (2-3 specific things with reasons)
+
+Then ask me one question about my day to refine if needed.`;
+
+  try{
+    const res=await fetch('https://api.anthropic.com/v1/messages',{
+      method:'POST',
+      headers:{'Content-Type':'application/json','x-api-key':apiKey,'anthropic-version':'2023-06-01','anthropic-dangerous-direct-browser-access':'true'},
+      body:JSON.stringify({model:'claude-sonnet-4-20250514',max_tokens:1200,system:buildMainSystem(getWardrobeString(),buildHistoryBlock(),getSeasonContext()+' '+getWeatherContext()),messages:[{role:'user',content:bootMsg}]})
+    });
+    const data=await res.json();
+    if(data.error)throw new Error(data.error.message);
+    const reply=data.content?.find(b=>b.type==='text')?.text||"Good morning Prasoon! What's the plan today?";
+    chatHistory.push({role:'user',content:bootMsg},{role:'assistant',content:reply});
+    hideTyping();
+    const briefRec=document.getElementById('brief-rec');
+    if(briefRec)briefRec.textContent=reply.split('\n').find(l=>l.trim())||reply.substring(0,100);
+    const isOutfit=isOutfitRecommendation(reply);
+    if(isOutfit)autoLog(extractOutfit(reply),'Regular office day');
+    addMsgWithAttachment('agent',reply,getChips(0),isOutfit,null,null);
+  }catch(e){
+    hideTyping();
+    addMsgWithAttachment('agent',"Good morning Prasoon! What's the occasion today?",getChips(0),false,null,null);
+  } finally { booting = false; }
+}
+
+// ─── FEATURE 1: WEATHER ─────────────────────────────────────────────
+let weatherData = null;
+
+const WX_CODES = {
+  0:'☀️',1:'🌤️',2:'⛅',3:'☁️',
+  45:'🌫️',48:'🌫️',
+  51:'🌦️',53:'🌦️',55:'🌧️',
+  61:'🌧️',63:'🌧️',65:'🌧️',
+  71:'🌨️',73:'🌨️',75:'❄️',
+  80:'🌦️',81:'🌧️',82:'⛈️',
+  95:'⛈️',96:'⛈️',99:'⛈️'
+};
+
+function wxIcon(code){ return WX_CODES[code] || '🌡️'; }
+
+function wxDesc(code){
+  if(code===0) return 'Clear sky';
+  if(code<=3) return 'Partly cloudy';
+  if(code<=48) return 'Foggy';
+  if(code<=55) return 'Drizzle';
+  if(code<=65) return 'Rainy';
+  if(code<=77) return 'Snowy';
+  if(code<=82) return 'Rain showers';
+  return 'Thunderstorm';
+}
+
+function wxStyleTip(temp, code){
+  if(code>=80) return 'Rain likely — avoid suede shoes today';
+  if(temp>=38) return 'Extreme heat — white linen shirt, skip all layers';
+  if(temp>=33) return 'Very hot — breathable fabrics only, no overshirt';
+  if(temp>=28) return 'Hot day — light layers only if going out';
+  if(temp>=22) return 'Pleasant — overshirt layering works well';
+  if(temp>=15) return 'Cool — overshirt or light jacket ideal';
+  return 'Cold — layer up fully';
+}
+
+async function fetchWeather(){
+  try{
+    const r = await fetch('https://api.open-meteo.com/v1/forecast?latitude=28.5355&longitude=77.3910&current=temperature_2m,weather_code&timezone=Asia/Kolkata');
+    const d = await r.json();
+    weatherData = {
+      temp: Math.round(d.current.temperature_2m),
+      code: d.current.weather_code
+    };
+    updateWeatherBrief();
+  } catch(e){ /* silent fail — weather is bonus feature */ }
+}
+
+function updateWeatherBrief(){
+  const el = document.getElementById('weather-block');
+  if(!el || !weatherData) return;
+  el.innerHTML = `
+    <div class="brief-weather-icon">${wxIcon(weatherData.code)}</div>
+    <div class="brief-weather-info">
+      <div class="brief-weather-temp">${weatherData.temp}°C · ${wxDesc(weatherData.code)}</div>
+      <div class="brief-weather-tip">${wxStyleTip(weatherData.temp, weatherData.code)}</div>
+    </div>`;
+}
+
+function getWeatherContext(){
+  if(!weatherData) return '';
+  return `CURRENT WEATHER (Noida, live): ${weatherData.temp}°C, ${wxDesc(weatherData.code)}. Style tip: ${wxStyleTip(weatherData.temp, weatherData.code)}.`;
+}
+
+// ─── FEATURE 3: OUTFIT RATING ─────────────────────────────────────────
+function rateOutfit(date, rating){
+  const log = getLog();
+  const idx = log.findIndex(e => e.date === date);
+  if(idx >= 0){
+    log[idx].rating = rating;
+    setLog(log);
+    renderHistory();
+  }
+}
+
+function starsHtml(date, currentRating){
+  const stars = [1,2,3,4,5].map(i => {
+    const filled = currentRating && i <= currentRating ? '★' : '☆';
+    const color = currentRating && i <= currentRating ? '#d97757' : '#ccc';
+    return `<button class="star-btn" style="color:${color}" onclick="rateOutfit('${date}',${i})" title="${i} star${i>1?'s':''}">${filled}</button>`;
+  }).join('');
+  const label = currentRating ? ['','Didnt like','Okay','Good','Great','Perfect'][currentRating] : 'Rate this outfit';
+  return `<div class="h-rating">${stars}<span class="h-rating-label">${label}</span></div>`;
+}
+
+function getRatingContext(){
+  const log = getLog();
+  const rated = log.filter(e => e.rating);
+  if(!rated.length) return '';
+  const fav = rated.filter(e => e.rating >= 4).map(e => e.outfit.split('|')[0]).join('; ');
+  const avoid = rated.filter(e => e.rating <= 2).map(e => e.outfit.split('|')[0]).join('; ');
+  let ctx = 'OUTFIT RATINGS (user preferences from past wear):';
+  if(fav) ctx += `
+- Highly rated (4-5 stars): ${fav}`;
+  if(avoid) ctx += `
+- Low rated (1-2 stars): ${avoid} — avoid repeating these`;
+  return ctx;
+}
+
+// ─── FEATURE 5: SHOPPING LIST ─────────────────────────────────────────
+function getShopList(){ try{ return JSON.parse(localStorage.getItem('sa_shop')||'[]'); } catch{ return []; } }
+function setShopList(l){ localStorage.setItem('sa_shop', JSON.stringify(l)); }
+
+function addShopItemFromAdvisor(btn){
+  const name = decodeURIComponent(btn.getAttribute('data-item')||'');
+  const why = decodeURIComponent(btn.getAttribute('data-why')||'');
+  addShopItem(name, why, 'Clarks / Uniqlo / M&S', '');
+  btn.textContent = '✓ Added to wishlist';
+  btn.disabled = true;
+}
+
+function addShopItem(name, why, brand, budget){
+  // Called manually from form or from advisor
+  const itemName = name || document.getElementById('shop-name').value.trim();
+  const itemWhy = why || document.getElementById('shop-why').value.trim();
+  const itemBrand = brand || document.getElementById('shop-brand').value.trim();
+  const itemBudget = budget || document.getElementById('shop-budget').value.trim();
+  if(!itemName) return;
+  const list = getShopList();
+  list.unshift({ id: Date.now(), name: itemName, why: itemWhy, brand: itemBrand, budget: itemBudget, bought: false, added: todayIST() });
+  setShopList(list);
+  if(!name){
+    ['shop-name','shop-why','shop-brand','shop-budget'].forEach(id => { const el=document.getElementById(id); if(el) el.value=''; });
+  }
+  renderShopList();
+}
+
+function markBought(id){
+  const list = getShopList();
+  const idx = list.findIndex(i => i.id === id);
+  if(idx >= 0){ list[idx].bought = true; setShopList(list); renderShopList(); }
+  // Prompt to add to wardrobe
+  setTimeout(() => {
+    if(confirm('Add "' + list[idx].name + '" to your wardrobe Kit?')){
+      const cat = list[idx].name.toLowerCase().includes('shoe')||list[idx].name.toLowerCase().includes('loafer')||list[idx].name.toLowerCase().includes('sneaker')||list[idx].name.toLowerCase().includes('derby') ? 'shoes' :
+                  list[idx].name.toLowerCase().includes('belt')||list[idx].name.toLowerCase().includes('watch')||list[idx].name.toLowerCase().includes('glass') ? 'accessories' :
+                  list[idx].name.toLowerCase().includes('jean')||list[idx].name.toLowerCase().includes('chino')||list[idx].name.toLowerCase().includes('trouser') ? 'bottoms' : 'tops';
+      const w = getWardrobe(); w[cat].push(list[idx].name); saveWardrobe(w); renderWardrobePanel();
+    }
+  }, 300);
+}
+
+function deleteShopItem(id){
+  setShopList(getShopList().filter(i => i.id !== id));
+  renderShopList();
+}
+
+function renderShopList(){
+  const list = getShopList();
+  const el = document.getElementById('shop-list');
+  if(!el) return;
+  if(!list.length){ el.innerHTML = '<div class="shop-empty">No items yet.<br>Run Advisor analysis to auto-populate,<br>or add items manually above.</div>'; return; }
+  const active = list.filter(i => !i.bought);
+  const bought = list.filter(i => i.bought);
+  let html = '';
+  if(active.length){
+    html += '<div class="shop-section"><h4>Wishlist (' + active.length + ')</h4>';
+    html += active.map(i => `
+      <div class="shop-item">
+        <div class="shop-item-top">
+          <div><div class="shop-item-name">${i.name}</div></div>
+          ${i.budget ? `<span class="shop-item-budget">${i.budget}</span>` : ''}
+        </div>
+        ${i.why ? `<div class="shop-item-why">${i.why}</div>` : ''}
+        ${i.brand ? `<div class="shop-item-brand">Try: ${i.brand}</div>` : ''}
+        <div class="shop-item-actions">
+          <button class="shop-bought-btn" onclick="markBought(${i.id})">✓ Mark as bought</button>
+          <button class="shop-del-btn" onclick="deleteShopItem(${i.id})">Remove</button>
+        </div>
+      </div>`).join('');
+    html += '</div>';
+  }
+  if(bought.length){
+    html += '<div class="shop-section"><h4>Bought</h4>';
+    html += bought.map(i => `
+      <div class="shop-item bought">
+        <div class="shop-item-top">
+          <div><div class="shop-item-name">${i.name} <span class="shop-bought-badge">✓ bought</span></div></div>
+        </div>
+        <button class="shop-del-btn" style="margin-top:6px;" onclick="deleteShopItem(${i.id})">Remove</button>
+      </div>`).join('');
+    html += '</div>';
+  }
+  el.innerHTML = html;
+}
+
+// ─── FEATURE 7: SHARE CARD ───────────────────────────────────────────
+let currentShareOutfit = null;
+
+function generateShareCard(outfitText, dateStr){
+  currentShareOutfit = { text: outfitText, date: dateStr };
+  const canvas = document.getElementById('share-canvas');
+  const ctx = canvas.getContext('2d');
+  const W = 420, H = 560;
+  canvas.width = W; canvas.height = H;
+  canvas.style.width = '100%';
+
+  // Background
+  ctx.fillStyle = '#f9f7f4';
+  ctx.fillRect(0, 0, W, H);
+
+  // Top accent bar
+  ctx.fillStyle = '#d97757';
+  ctx.fillRect(0, 0, W, 6);
+
+  // Logo area
+  ctx.fillStyle = '#d97757';
+  ctx.font = 'italic 500 22px Georgia, serif';
+  ctx.fillText('Style', 30, 48);
+  ctx.fillStyle = '#1a1915';
+  ctx.font = 'italic 500 22px Georgia, serif';
+  ctx.fillText(' Agent', 78, 48);
+
+  // Date
+  const d = new Date((dateStr || todayIST()) + 'T00:00:00');
+  const dateLabel = d.toLocaleDateString('en-IN', { weekday:'long', day:'numeric', month:'long', year:'numeric' });
+  ctx.fillStyle = '#6b6860';
+  ctx.font = '400 13px system-ui, sans-serif';
+  ctx.fillText(dateLabel, 30, 72);
+
+  // Divider
+  ctx.strokeStyle = '#e8e0d8';
+  ctx.lineWidth = 1;
+  ctx.beginPath(); ctx.moveTo(30, 88); ctx.lineTo(W-30, 88); ctx.stroke();
+
+  // Outfit title
+  ctx.fillStyle = '#d97757';
+  ctx.font = '500 11px system-ui, sans-serif';
+  ctx.fillText('TODAYS OUTFIT', 30, 114);
+
+  // Parse and render outfit rows
+  const rows = outfitText.split(/[|\n,]/).map(r => r.trim()).filter(r => r && r.length > 2);
+  const labels = ['Top','Bottom','Shoes','Belt','Watch Strap','Glasses'];
+  let yPos = 140;
+  rows.slice(0,8).forEach((row, i) => {
+    // Row background
+    if(i % 2 === 0){
+      ctx.fillStyle = '#f3f0eb';
+      ctx.beginPath();
+      ctx.roundRect ? ctx.roundRect(24, yPos-16, W-48, 30, 6) : ctx.rect(24, yPos-16, W-48, 30);
+      ctx.fill();
+    }
+    // Label
+    ctx.fillStyle = '#a09d98';
+    ctx.font = '400 11px system-ui, sans-serif';
+    const label = labels[i] || '';
+    ctx.fillText(label, 36, yPos+2);
+    // Value
+    ctx.fillStyle = '#1a1915';
+    ctx.font = '500 13px system-ui, sans-serif';
+    const val = row.replace(/^(top|bottom|shoes|belt|watch|glasses|strap)[:\s→-]*/i, '').trim();
+    ctx.fillText(val.length > 38 ? val.substring(0,36)+'…' : val, 110, yPos+2);
+    yPos += 34;
+  });
+
+  // Bottom section
+  yPos = Math.max(yPos + 16, 440);
+  ctx.strokeStyle = '#e8e0d8';
+  ctx.beginPath(); ctx.moveTo(30, yPos); ctx.lineTo(W-30, yPos); ctx.stroke();
+
+  // Weather if available
+  if(weatherData){
+    ctx.fillStyle = '#6b6860';
+    ctx.font = '400 12px system-ui, sans-serif';
+    ctx.fillText(`${wxIcon(weatherData.code)} ${weatherData.temp}°C · Noida`, 30, yPos+22);
+  }
+
+  // Branding
+  ctx.fillStyle = '#a09d98';
+  ctx.font = '400 11px system-ui, sans-serif';
+  ctx.fillText('styleagentforprasoon.netlify.app', W-30-ctx.measureText('styleagentforprasoon.netlify.app').width, yPos+22);
+
+  document.getElementById('share-modal').classList.add('open');
+}
+
+function closeShareModal(){
+  document.getElementById('share-modal').classList.remove('open');
+  currentShareOutfit = null;
+}
+
+function downloadShareCard(){
+  const canvas = document.getElementById('share-canvas');
+  const a = document.createElement('a');
+  const date = currentShareOutfit?.date || todayIST();
+  a.download = `outfit-${date}.png`;
+  a.href = canvas.toDataURL('image/png');
+  a.click();
+}
+
+// ─── PHOTO LOG ───────────────────────────────────────────────────────
+function attachPhotoToEntry(date, input){
+  const file = input.files[0];
+  if(!file) return;
+  const reader = new FileReader();
+  reader.onload = function(e){
+    const log = getLog();
+    const idx = log.findIndex(en => en.date === date);
+    if(idx >= 0){
+      // Compress image before storing to keep localStorage light
+      const img = new Image();
+      img.onload = function(){
+        const canvas = document.createElement('canvas');
+        const maxW = 600;
+        const ratio = Math.min(maxW / img.width, maxW / img.height, 1);
+        canvas.width = img.width * ratio;
+        canvas.height = img.height * ratio;
+        canvas.getContext('2d').drawImage(img, 0, 0, canvas.width, canvas.height);
+        log[idx].photo = canvas.toDataURL('image/jpeg', 0.75);
+        setLog(log);
+        renderHistory();
+      };
+      img.src = e.target.result;
+    }
+  };
+  reader.readAsDataURL(file);
+}
+
+function attachPhotoFromChat(date){
+  // Called from chat bubble camera button
+  const input = document.createElement('input');
+  input.type = 'file';
+  input.accept = 'image/*';
+  input.capture = 'environment';
+  input.onchange = function(){
+    if(input.files[0]) attachPhotoToEntry(date, input);
+  };
+  input.click();
+}
+
+function openLightbox(src){
+  document.getElementById('lightbox-img').src = src;
+  document.getElementById('photo-lightbox').classList.add('open');
+}
+
+function closeLightbox(){
+  document.getElementById('photo-lightbox').classList.remove('open');
+  document.getElementById('lightbox-img').src = '';
+}
+
+function clearChat(){chatHistory=[];msgs.innerHTML='';chipsEl.innerHTML='';lastOccasion='Regular office day';boot();}
+
+// ─── UNIVERSAL ATTACHMENT HANDLER ───────────────────────────────────
+// Stores the current pending attachment for sending with next message
+let pendingAttachment = null; // {type, content, name, mediaType, displayEl}
+
+function getFileCategory(name) {
+  const ext = name.split('.').pop().toLowerCase();
+  if (['jpg','jpeg','png','gif','webp'].includes(ext)) return 'image';
+  if (ext === 'pdf') return 'pdf';
+  if (['xlsx','xls','csv'].includes(ext)) return 'excel';
+  if (['doc','docx'].includes(ext)) return 'word';
+  if (ext === 'txt') return 'text';
+  return 'other';
+}
+
+function fileIcon(cat) {
+  return {image:'🖼️', pdf:'📄', excel:'📊', word:'📝', text:'📃', other:'📎'}[cat] || '📎';
+}
+
+function fileSizeLabel(bytes) {
+  if (bytes < 1024) return bytes + ' B';
+  if (bytes < 1024*1024) return (bytes/1024).toFixed(1) + ' KB';
+  return (bytes/(1024*1024)).toFixed(1) + ' MB';
+}
+
+function showAttachPreview(file, cat) {
+  const preview = document.getElementById('attach-preview');
+  const isImage = cat === 'image';
+  let inner = '<div class="attach-chip">';
+  if (isImage) {
+    inner += `<img class="attach-thumb" id="attach-thumb" src="" alt="preview">`;
+  } else {
+    inner += `<div class="attach-file-icon">${fileIcon(cat)}</div>`;
+  }
+  inner += `<div class="attach-info">
+    <div class="attach-info-name">${file.name}</div>
+    <div class="attach-info-size">${fileSizeLabel(file.size)}</div>
+  </div>
+  <button class="attach-remove" onclick="clearAttachment()">×</button>
+  </div>`;
+  preview.innerHTML = inner;
+  preview.classList.add('visible');
+  document.getElementById('attach-btn').classList.add('active');
+  if (isImage) {
+    const reader = new FileReader();
+    reader.onload = e => {
+      const thumb = document.getElementById('attach-thumb');
+      if (thumb) thumb.src = e.target.result;
+    };
+    reader.readAsDataURL(file);
+  }
+  sendBtn.disabled = false;
+}
+
+function clearAttachment() {
+  pendingAttachment = null;
+  const preview = document.getElementById('attach-preview');
+  preview.innerHTML = '';
+  preview.classList.remove('visible');
+  document.getElementById('attach-btn').classList.remove('active');
+  document.getElementById('attach-input').value = '';
+  sendBtn.disabled = !inputEl.value.trim();
+}
+
+async function handleAttach(event) {
+  const file = event.target.files[0];
+  if (!file) return;
+  const cat = getFileCategory(file.name);
+
+  try {
+    if (cat === 'image') {
+      // Base64 encode for Claude vision
+      const b64 = await new Promise((res, rej) => {
+        const r = new FileReader();
+        r.onload = () => res(r.result.split(',')[1]);
+        r.onerror = rej;
+        r.readAsDataURL(file);
+      });
+      const ext = file.name.split('.').pop().toLowerCase();
+      const mediaType = ext === 'jpg' || ext === 'jpeg' ? 'image/jpeg' : ext === 'png' ? 'image/png' : ext === 'gif' ? 'image/gif' : 'image/webp';
+      pendingAttachment = { type: 'image', content: b64, name: file.name, mediaType };
+
+    } else if (cat === 'pdf') {
+      // Base64 encode PDF for Claude document API
+      const b64 = await new Promise((res, rej) => {
+        const r = new FileReader();
+        r.onload = () => res(r.result.split(',')[1]);
+        r.onerror = rej;
+        r.readAsDataURL(file);
+      });
+      pendingAttachment = { type: 'pdf', content: b64, name: file.name, mediaType: 'application/pdf' };
+
+    } else if (cat === 'excel') {
+      // Parse with SheetJS → text for Claude
+      const buf = await file.arrayBuffer();
+      const wb = XLSX.read(new Uint8Array(buf), { type: 'array', cellDates: true });
+      const ws = wb.Sheets[wb.SheetNames[0]];
+      const csv = XLSX.utils.sheet_to_csv(ws);
+      pendingAttachment = { type: 'text', content: `Excel file: ${file.name}
+
+${csv}`, name: file.name };
+
+    } else if (cat === 'word') {
+      // Parse with mammoth → text for Claude
+      const buf = await file.arrayBuffer();
+      const result = await mammoth.extractRawText({ arrayBuffer: buf });
+      pendingAttachment = { type: 'text', content: `Word document: ${file.name}
+
+${result.value}`, name: file.name };
+
+    } else {
+      // Plain text
+      const text = await file.text();
+      pendingAttachment = { type: 'text', content: `File: ${file.name}
+
+${text}`, name: file.name };
+    }
+
+    showAttachPreview(file, cat);
+  } catch(err) {
+    alert('Could not read this file: ' + err.message);
+  }
+}
+
+function buildMessageContent(text) {
+  // Build the content array for Claude API — text + optional attachment
+  if (!pendingAttachment) return text;
+  const att = pendingAttachment;
+  const parts = [];
+
+  if (att.type === 'image') {
+    parts.push({ type: 'image', source: { type: 'base64', media_type: att.mediaType, data: att.content } });
+  } else if (att.type === 'pdf') {
+    parts.push({ type: 'document', source: { type: 'base64', media_type: att.mediaType, data: att.content } });
+  } else {
+    parts.push({ type: 'text', text: att.content });
+  }
+
+  if (text.trim()) {
+    parts.push({ type: 'text', text });
+  } else {
+    // Default prompt if user just attached without typing
+    parts.push({ type: 'text', text: `I have attached a file called "${att.name}". Please read it and respond in the context of my wardrobe and outfit planning.` });
+  }
+  return parts;
+}
+
+function addMsgWithAttachment(role, rawText, chips, showLog, planHtml, attachment) {
+  chipsEl.innerHTML = '';
+  const row = document.createElement('div'); row.className = 'msg ' + role;
+  const av = document.createElement('div'); av.className = 'm-av';
+  av.textContent = role === 'agent' ? '✦' : 'P';
+  const bub = document.createElement('div'); bub.className = 'bubble';
+
+  // Show attachment preview inside bubble
+  if (attachment) {
+    const attDiv = document.createElement('div'); attDiv.className = 'msg-attachment';
+    if (attachment.type === 'image') {
+      const img = document.createElement('img');
+      img.src = 'data:' + attachment.mediaType + ';base64,' + attachment.content;
+      attDiv.appendChild(img);
+    } else {
+      attDiv.innerHTML = `<div class="file-pill"><span class="file-pill-icon">${fileIcon(getFileCategory(attachment.name))}</span><span>${attachment.name}</span></div>`;
+    }
+    bub.appendChild(attDiv);
+  }
+
+  if (planHtml) {
+    bub.innerHTML += planHtml;
+  } else if (rawText) {
+    const { main, why, avoid } = parseOutfitBlocks(fmt(rawText));
+    bub.innerHTML += main;
+    if (why) {
+      const wb = document.createElement('div'); wb.className = 'why-block';
+      wb.innerHTML = `<div class="why-label">Why it works</div><div class="why-text">${why}</div>`;
+      bub.appendChild(wb);
+    }
+    if (avoid) {
+      const ab = document.createElement('div'); ab.className = 'avoid-block';
+      ab.innerHTML = `<div class="avoid-label">Avoid today</div><div class="avoid-text">${avoid}</div>`;
+      bub.appendChild(ab);
+    }
+    if (showLog) {
+      const badge = document.createElement('div'); badge.className = 'autolog-tag';
+      badge.textContent = '✓ logged to outfit history';
+      bub.appendChild(badge);
+    }
+  }
+
+  row.appendChild(av); row.appendChild(bub); msgs.appendChild(row);
+  if (chips) chips.forEach(c => {
+    const b = document.createElement('button'); b.className = 'chip'; b.textContent = c;
+    b.onclick = () => { if (!busy) go(c); }; chipsEl.appendChild(b);
+  });
+  msgs.scrollTop = msgs.scrollHeight;
+}
+
+// ─── EXPORT / IMPORT ─────────────────────────────────────────────────
+function exportData(){
+  const payload={
+    outfit_log: getLog(),
+    sa_wardrobe: getWardrobe(),
+    exported_at: new Date().toISOString(),
+    version: 'style-agent-v3'
+  };
+  const blob=new Blob([JSON.stringify(payload,null,2)],{type:'application/json'});
+  const url=URL.createObjectURL(blob);
+  const a=document.createElement('a');
+  a.href=url;
+  const date=todayIST();
+  a.download=`style-agent-backup-${date}.json`;
+  a.click();
+  URL.revokeObjectURL(url);
+}
+
+function importData(event){
+  const file=event.target.files[0];
+  if(!file)return;
+  const reader=new FileReader();
+  reader.onload=function(e){
+    try{
+      const data=JSON.parse(e.target.result);
+      if(data.outfit_log&&Array.isArray(data.outfit_log)){
+        setLog(data.outfit_log);
+        renderHistory();
+        buildInsights();
+      }
+      if(data.sa_wardrobe){
+        saveWardrobe(data.sa_wardrobe);
+        renderWardrobePanel();
+      }
+      alert('Import successful! ' + (data.outfit_log?.length||0) + ' outfits restored.');
+    }catch(err){
+      alert('Import failed — invalid file. Make sure you are using a Style Agent backup file.');
+    }
+    event.target.value='';
+  };
+  reader.readAsText(file);
+}
+function openModal(){document.getElementById('mob-modal').classList.add('open');}
+function closeModal(){document.getElementById('mob-modal').classList.remove('open');}
+
+sendBtn.addEventListener('click',()=>go(inputEl.value));
+inputEl.addEventListener('keydown',e=>{if(e.key==='Enter'&&!e.shiftKey){e.preventDefault();go(inputEl.value);}});
+inputEl.addEventListener('input',()=>{
+  sendBtn.disabled=(!inputEl.value.trim()&&!pendingAttachment)||busy;
+  inputEl.style.height='auto';
+  inputEl.style.height=Math.min(inputEl.scrollHeight,120)+'px';
+});
+</script>
+</body>
+</html>
