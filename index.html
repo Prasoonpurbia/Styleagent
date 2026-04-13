@@ -972,8 +972,24 @@ function renderHistory(){
 
 function buildHistoryBlock(){
   const log=getLog();
-  if(!log.length)return'No outfit history yet.';
+  if(!log.length)return'No outfit history yet. No repeat restrictions apply.';
   const today=todayIST();
+  const w=getWardrobe();
+
+  // Build per-top last-worn map
+  const topLastWorn={};
+  w.tops.forEach(top=>{
+    const key=top.toLowerCase().split(' ')[0];
+    const found=log.find(e=>e.outfit.toLowerCase().includes(key));
+    if(found){
+      topLastWorn[top]={date:found.date, days:daysBetween(found.date,today)};
+    }
+  });
+
+  // Blocked tops (worn within 10 days)
+  const blockedTops=Object.entries(topLastWorn).filter(([,v])=>v.days<10).map(([t,v])=>`${t} (worn ${v.days} days ago — DO NOT USE until day 10)`);
+  const availableTops=w.tops.filter(t=>!topLastWorn[t]||topLastWorn[t].days>=10);
+
   const lines=log.slice(0,45).map(e=>{
     const d=new Date(e.date+'T00:00:00');
     const label=d.toLocaleDateString('en-IN',{weekday:'long',day:'numeric',month:'long'});
@@ -981,7 +997,21 @@ function buildHistoryBlock(){
     const occ=e.occasion?` [${e.occasion}]`:'';
     return`${label} (${days} days ago)${occ}: ${e.outfit}`;
   });
-  return`OUTFIT HISTORY — CHECK BEFORE RECOMMENDING:\nRepeat rules: same top=10 day wait | same full outfit=30 day wait\n${lines.join('\n')}`;
+
+  let block=`OUTFIT HISTORY — YOU MUST CHECK THIS BEFORE EVERY RECOMMENDATION:
+REPEAT RULES: same top = 10 day minimum wait | same full outfit = 30 day wait
+
+BLOCKED TOPS (DO NOT RECOMMEND THESE TODAY):
+${blockedTops.length?blockedTops.join('\n'):'None — all tops available'}
+
+AVAILABLE TOPS (recommend from these only):
+${availableTops.join(', ')}
+
+FULL HISTORY (most recent first):
+${lines.join('\n')}
+
+CRITICAL: If the user says they wore something recently, BELIEVE THEM and adjust immediately. Never argue with the user about what they wore.`;
+  return block;
 }
 
 // ─── SEASON ──────────────────────────────────────────────────────────
@@ -1154,8 +1184,19 @@ async function runAdvisor(){
 // ─── PLAN REQUEST DETECTION ───────────────────────────────────────────
 function isPlanRequest(text){
   const low=text.toLowerCase();
-  return(low.includes('plan')||low.includes('week')||low.includes('rotation')||low.includes('schedule'))&&
-    (low.includes('day')||low.includes('week')||low.includes('mon')||low.includes('days'));
+  // Must be an explicit request for a plan — not a complaint or question about a single outfit
+  const hasPlanIntent = (
+    (low.includes('give me') || low.includes('show me') || low.includes('create') || 
+     low.includes('make') || low.includes('plan for') || low.includes('plan next') ||
+     low.includes('rotation plan') || low.includes('week plan') || low.includes('day plan')) &&
+    (low.includes('day') || low.includes('week'))
+  );
+  // Exclude complaint/question patterns
+  const isComplaint = low.includes('wore') || low.includes('wearing') || 
+    low.includes('repeat') || low.includes('already') || low.includes('last week') ||
+    low.includes('yesterday') || low.includes('worn') || low.includes('rule') ||
+    low.includes('why') || low.includes('what about') || low.includes('?');
+  return hasPlanIntent && !isComplaint;
 }
 
 function extractDays(text){
@@ -2043,6 +2084,20 @@ function addMsgWithAttachment(role, rawText, chips, showLog, planHtml, attachmen
       const badge = document.createElement('div'); badge.className = 'autolog-tag';
       badge.textContent = '✓ logged to outfit history';
       bub.appendChild(badge);
+      // Photo button
+      const todayDate=todayIST();
+      const photoBtn=document.createElement('button');
+      photoBtn.className='outfit-photo-btn';
+      photoBtn.innerHTML='📷 Add today\'s photo';
+      photoBtn.onclick=()=>attachPhotoFromChat(todayDate);
+      bub.appendChild(photoBtn);
+      // Share card button
+      const shareBtn=document.createElement('button');
+      shareBtn.className='share-card-btn';
+      shareBtn.innerHTML='🔗 Share outfit card';
+      const outfitSnap=rawText||'';
+      shareBtn.onclick=()=>generateShareCard(outfitSnap, todayDate);
+      bub.appendChild(shareBtn);
     }
   }
 
