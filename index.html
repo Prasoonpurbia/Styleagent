@@ -667,6 +667,10 @@ NEVER mix accessory colors. Brown shoes + black belt = wrong. Always.
 
 CONFIDENCE RULE: You are the style expert. If Prasoon pushes back on a correct recommendation, hold your position with evidence. Only change your recommendation if new factual information is provided (e.g. a different date, a different occasion). Never reverse a correct answer simply because you are questioned.
 
+LOGGING RULE: If Prasoon shares an outfit plan or says "log this", "save this", "pls log", or shares a table/list of outfits — DO NOT generate a new plan. Instead acknowledge what he shared, confirm you have noted it, and tell him to use the Log tab to save it permanently. Never override what he tells you with your own recommendation.
+
+PLAN GENERATION RULE: Only generate a rotation plan when Prasoon explicitly asks you to CREATE one — phrases like "give me a plan", "create a rotation", "suggest outfits for the week". If he is sharing his own plan, just respond to what he said.
+
 DATE RULE: The date and day provided in the user message is the confirmed IST date. Trust it completely. Do not recalculate or second-guess the day.
 
 REPEAT RULES (check history before every recommendation):
@@ -1184,19 +1188,33 @@ async function runAdvisor(){
 // ─── PLAN REQUEST DETECTION ───────────────────────────────────────────
 function isPlanRequest(text){
   const low=text.toLowerCase();
-  // Must be an explicit request for a plan — not a complaint or question about a single outfit
-  const hasPlanIntent = (
-    (low.includes('give me') || low.includes('show me') || low.includes('create') || 
-     low.includes('make') || low.includes('plan for') || low.includes('plan next') ||
-     low.includes('rotation plan') || low.includes('week plan') || low.includes('day plan')) &&
-    (low.includes('day') || low.includes('week'))
-  );
-  // Exclude complaint/question patterns
+  
+  // NEVER trigger planner if user is sharing/logging their own plan
+  const isUserLogging = low.includes('log this') || low.includes('log it') || 
+    low.includes('pls log') || low.includes('please log') || 
+    low.includes('save this') || low.includes('i will be using') ||
+    low.includes('i am using') || low.includes('my plan') ||
+    low.includes('this is my') || low.includes('below plan') ||
+    low.includes('following plan') || low.includes('log the') ||
+    low.includes('using below') || low.includes('using this');
+  if(isUserLogging) return false;
+
+  // NEVER trigger on complaints, questions, or single-day requests
   const isComplaint = low.includes('wore') || low.includes('wearing') || 
     low.includes('repeat') || low.includes('already') || low.includes('last week') ||
     low.includes('yesterday') || low.includes('worn') || low.includes('rule') ||
     low.includes('why') || low.includes('what about') || low.includes('?');
-  return hasPlanIntent && !isComplaint;
+  if(isComplaint) return false;
+
+  // Must be an explicit request for the agent to CREATE a new plan
+  const hasPlanIntent = (
+    (low.includes('give me') || low.includes('show me') || low.includes('create') || 
+     low.includes('make me') || low.includes('plan for next') || low.includes('plan next') ||
+     low.includes('rotation plan') || low.includes('week plan') || low.includes('day plan') ||
+     low.includes('suggest a plan') || low.includes('generate a plan')) &&
+    (low.includes('day') || low.includes('week'))
+  );
+  return hasPlanIntent;
 }
 
 function extractDays(text){
@@ -1369,6 +1387,17 @@ function getChips(turn){
 }
 
 // ─── MAIN SEND ───────────────────────────────────────────────────────
+function tryParsePlan(text){
+  // If Claude returns a JSON array of outfit objects, render as table
+  try{
+    const match = text.match(/\[\s*\{[\s\S]*\}\s*\]/);
+    if(!match) return null;
+    const data = JSON.parse(match[0]);
+    if(Array.isArray(data) && data.length > 0 && data[0].top && data[0].day) return data;
+    return null;
+  } catch(e){ return null; }
+}
+
 async function go(text){
   if(!text.trim()||busy)return;
   busy=true;sendBtn.disabled=true;
@@ -1388,41 +1417,8 @@ async function go(text){
   showTyping();
 
   try{
-    // PLAN REQUEST — use planner system, render as table
-    if(isPlanRequest(text)){
-      const numDays=extractDays(text);
-      const log=getLog();
-      const today=todayIST();
-      const histLines=log.slice(0,30).map(e=>`${e.date} (${daysBetween(e.date,today)} days ago): ${e.outfit}`).join('\n');
-      const startDate=nowIST();
-      const planMsg=`Create a ${numDays}-day wardrobe rotation plan starting from ${startDate.toLocaleDateString('en-IN',{weekday:'long',day:'numeric',month:'long'})}.
-
-My wardrobe:
-${getWardrobeString()}
-
-Recent outfit history (respect the repeat rules):
-${histLines||'No history yet — plan freely.'}
-
-Season context: ${getSeasonContext()}
-
-Return exactly ${numDays} days in the JSON array.`;
-
-      const res=await fetch('https://api.anthropic.com/v1/messages',{
-        method:'POST',
-        headers:{'Content-Type':'application/json','x-api-key':apiKey,'anthropic-version':'2023-06-01','anthropic-dangerous-direct-browser-access':'true'},
-        body:JSON.stringify({model:'claude-sonnet-4-20250514',max_tokens:2000,system:PLANNER_SYSTEM,messages:[{role:'user',content:planMsg}]})
-      });
-      const data=await res.json();
-      if(data.error)throw new Error(data.error.message);
-      const raw=data.content?.find(b=>b.type==='text')?.text||'[]';
-      const planData=JSON.parse(raw.replace(/```json|```/g,'').trim());
-      chatHistory.push({role:'assistant',content:`Here is your ${numDays}-day wardrobe rotation plan.`});
-      hideTyping();
-      const tableHtml=renderPlanTable(planData,numDays);
-      addMsgWithAttachment('agent',null,getChips(chatHistory.length),false,tableHtml,null);
-
-    }else{
-      // NORMAL outfit/chat request
+    {
+      // ALL requests go to Claude — Claude understands context and decides what to do
       const res=await fetch('https://api.anthropic.com/v1/messages',{
         method:'POST',
         headers:{'Content-Type':'application/json','x-api-key':apiKey,'anthropic-version':'2023-06-01','anthropic-dangerous-direct-browser-access':'true'},
@@ -1435,7 +1431,14 @@ Return exactly ${numDays} days in the JSON array.`;
       hideTyping();
       const isOutfit=isOutfitRecommendation(reply);
       if(isOutfit)autoLog(extractOutfit(reply),lastOccasion);
-      addMsgWithAttachment('agent',reply,getChips(chatHistory.length),isOutfit,null,null);
+      // Check if Claude returned a plan JSON and render as table
+      const planData=tryParsePlan(reply);
+      if(planData){
+        const tableHtml=renderPlanTable(planData, planData.length);
+        addMsgWithAttachment('agent',null,getChips(chatHistory.length),false,tableHtml,null);
+      } else {
+        addMsgWithAttachment('agent',reply,getChips(chatHistory.length),isOutfit,null,null);
+      }
     }
   }catch(e){
     hideTyping();
