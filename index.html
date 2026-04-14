@@ -448,6 +448,13 @@ html,body{height:100%;overflow:hidden;background:var(--bg);color:var(--text);fon
         <input class="w-add-input" id="new-item" placeholder="e.g. White linen shirt">
         <button class="w-add-btn" onclick="addWardrobeItem()">Add to wardrobe</button>
       </div>
+
+      <div class="w-add-form" style="margin-top:10px;">
+        <h4>Bulk add wardrobe</h4>
+        <textarea class="w-add-input" id="bulk-wardrobe-text" placeholder="Describe your full wardrobe in any format. e.g:&#10;Tops: Navy shirt, Black shirt, White tee&#10;Bottoms: Black jeans, Grey trousers&#10;Shoes: White sneakers, Brown loafers&#10;Accessories: Silver watch, Black belt" style="min-height:90px;resize:vertical;"></textarea>
+        <button class="w-add-btn" onclick="bulkAddWardrobe()" style="margin-top:4px;">Parse &amp; add all items</button>
+        <div id="bulk-wardrobe-status" style="font-size:11.5px;margin-top:5px;display:none;"></div>
+      </div>
       <div class="sb-section" style="margin-top:14px;">
         <h4>Accessory rule</h4>
         <div class="w-item"><div class="wdot" style="background:#8B6343"></div>Brown day → all brown + tortoise glasses</div>
@@ -677,6 +684,16 @@ NEVER mix accessory colors. Brown shoes + black belt = wrong. Always.
 CONFIDENCE RULE: You are the style expert. If Prasoon pushes back on a correct recommendation, hold your position with evidence. Only change your recommendation if new factual information is provided (e.g. a different date, a different occasion). Never reverse a correct answer simply because you are questioned.
 
 LOGGING RULE: If Prasoon shares an outfit plan or says "log this", "save this", "pls log", or shares a table/list of outfits — DO NOT generate a new plan. Acknowledge what he shared and confirm it is noted.
+
+WARDROBE PHOTO RULE: If Prasoon shares a photo of clothing items and says anything like "add this", "add to wardrobe", "add to kit", or just shares an image of clothes — identify every clothing item visible in the image and respond in this EXACT format:
+WARDROBE_ADD:
+- [category]: [item name]
+- [category]: [item name]
+END_WARDROBE_ADD
+
+Categories must be exactly: tops, bottoms, shoes, or accessories.
+Example: "WARDROBE_ADD:\n- tops: Navy blue shirt\n- bottoms: Black jeans\nEND_WARDROBE_ADD"
+After the block, confirm what you identified and ask if anything needs correction.
 
 PLAN GENERATION RULE: Only generate a rotation plan when Prasoon explicitly asks you to CREATE one — phrases like "give me a plan", "create a rotation", "suggest outfits for the week". If he is sharing his own plan, just respond to what he said.
 
@@ -1403,6 +1420,33 @@ function getChips(turn){
 }
 
 // ─── MAIN SEND ───────────────────────────────────────────────────────
+function tryAddWardrobeFromReply(text){
+  // Detect WARDROBE_ADD block in agent reply and add items to Kit
+  const match = text.match(/WARDROBE_ADD:([\s\S]*?)END_WARDROBE_ADD/);
+  if(!match) return false;
+  const lines = match[1].trim().split('\n');
+  const w = getWardrobe();
+  let added = 0;
+  lines.forEach(line=>{
+    const m = line.match(/^-\s*(tops|bottoms|shoes|accessories):\s*(.+)/i);
+    if(m){
+      const cat = m[1].toLowerCase();
+      const item = m[2].trim();
+      if(item && !w[cat].map(i=>i.toLowerCase()).includes(item.toLowerCase())){
+        w[cat].push(item);
+        added++;
+      }
+    }
+  });
+  if(added > 0){
+    saveWardrobe(w);
+    renderWardrobePanel();
+    // Switch to Kit tab so user sees the additions
+    switchTab('wardrobe');
+  }
+  return added > 0;
+}
+
 function tryParsePlan(text){
   // If Claude returns a JSON array of outfit objects, render as table
   try{
@@ -1450,6 +1494,8 @@ async function go(text){
       saveChatHistory();
       const isOutfit=isOutfitRecommendation(reply);
       if(isOutfit)autoLog(extractOutfit(reply),lastOccasion);
+      // Check if Claude identified wardrobe items from a photo
+      const wardrobeAdded = tryAddWardrobeFromReply(reply);
       // Check if Claude returned a plan JSON and render as table
       const planData=tryParsePlan(reply);
       if(planData){
@@ -1982,6 +2028,67 @@ Return format: [{"date":"2026-04-13","outfit":"Light blue shirt, Navy chinos, Br
   }catch(e){
     statusEl.style.color='var(--red)';
     statusEl.textContent='Error: '+e.message;
+  }
+}
+
+// ─── BULK WARDROBE ADD ───────────────────────────────────────────────
+async function bulkAddWardrobe(){
+  const text = document.getElementById('bulk-wardrobe-text').value.trim();
+  const statusEl = document.getElementById('bulk-wardrobe-status');
+  if(!text){ alert('Describe your wardrobe first.'); return; }
+
+  statusEl.style.display = 'block';
+  statusEl.style.color = 'var(--muted)';
+  statusEl.textContent = 'Parsing your wardrobe...';
+
+  try{
+    const res = await fetch('https://api.anthropic.com/v1/messages',{
+      method:'POST',
+      headers:{'Content-Type':'application/json','x-api-key':apiKey,'anthropic-version':'2023-06-01','anthropic-dangerous-direct-browser-access':'true'},
+      body:JSON.stringify({
+        model:'claude-sonnet-4-20250514',
+        max_tokens:1000,
+        messages:[{role:'user',content:`Parse this wardrobe description and return ONLY a JSON object. No markdown, no explanation.
+
+Categorise every item into: tops, bottoms, shoes, or accessories.
+Tops = shirts, polos, tees, overshirts, jackets
+Bottoms = jeans, trousers, chinos, shorts
+Shoes = any footwear
+Accessories = belts, watches, straps, glasses, bags, ties
+
+Wardrobe to parse:
+${text}
+
+Return format: {"tops":["item1","item2"],"bottoms":["item1"],"shoes":["item1"],"accessories":["item1"]}`}]
+      })
+    });
+    const data = await res.json();
+    const raw = data.content?.find(b=>b.type==='text')?.text||'{}';
+    const parsed = JSON.parse(raw.replace(/\`\`\`json|\`\`\`/g,'').trim());
+
+    const w = getWardrobe();
+    let added = 0;
+    ['tops','bottoms','shoes','accessories'].forEach(cat=>{
+      if(parsed[cat] && Array.isArray(parsed[cat])){
+        parsed[cat].forEach(item=>{
+          const clean = item.trim();
+          if(clean && !w[cat].map(i=>i.toLowerCase()).includes(clean.toLowerCase())){
+            w[cat].push(clean);
+            added++;
+          }
+        });
+      }
+    });
+    saveWardrobe(w);
+    renderWardrobePanel();
+
+    statusEl.style.color = 'var(--green)';
+    statusEl.textContent = `✓ ${added} new items added to your wardrobe!`;
+    document.getElementById('bulk-wardrobe-text').value = '';
+
+  }catch(e){
+    statusEl.style.color = 'var(--red)';
+    statusEl.textContent = 'Error: ' + e.message;
   }
 }
 
