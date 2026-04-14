@@ -1430,6 +1430,7 @@ async function go(text){
   addMsgWithAttachment('user', text.replace(/\n/g,'<br>'), null, false, null, att);
   clearAttachment();
   chatHistory.push({role:'user', content: msgContent});
+  saveChatHistory();
   showTyping();
 
   try{
@@ -1445,6 +1446,8 @@ async function go(text){
       const reply=data.content?.find(b=>b.type==='text')?.text||'Something went wrong.';
       chatHistory.push({role:'assistant',content:reply});
       hideTyping();
+      chatHistory.push({role:'assistant',content:reply});
+      saveChatHistory();
       const isOutfit=isOutfitRecommendation(reply);
       if(isOutfit)autoLog(extractOutfit(reply),lastOccasion);
       // Check if Claude returned a plan JSON and render as table
@@ -1559,11 +1562,15 @@ Based on my outfit history and wardrobe, give me:
 
 Then ask me one question about my day to refine if needed.`;
 
+  // Restore today's conversation if available
+  saveChatDate();
+  const hadHistory = loadChatHistory();
+
   try{
     const res=await fetch('https://api.anthropic.com/v1/messages',{
       method:'POST',
       headers:{'Content-Type':'application/json','x-api-key':apiKey,'anthropic-version':'2023-06-01','anthropic-dangerous-direct-browser-access':'true'},
-      body:JSON.stringify({model:'claude-sonnet-4-20250514',max_tokens:1200,system:buildMainSystem(getWardrobeString(),buildHistoryBlock(),getSeasonContext()+' '+getWeatherContext()),messages:[{role:'user',content:bootMsg}]})
+      body:JSON.stringify({model:'claude-sonnet-4-20250514',max_tokens:1200,system:buildMainSystem(getWardrobeString(),buildHistoryBlock(),getSeasonContext()+' '+getWeatherContext()),messages:[...chatHistory,{role:'user',content:bootMsg}]})
     });
     const data=await res.json();
     if(data.error)throw new Error(data.error.message);
@@ -1978,7 +1985,45 @@ Return format: [{"date":"2026-04-13","outfit":"Light blue shirt, Navy chinos, Br
   }
 }
 
-function clearChat(){chatHistory=[];msgs.innerHTML='';chipsEl.innerHTML='';lastOccasion='Regular office day';boot();}
+// ─── CONVERSATION HISTORY PERSISTENCE ────────────────────────────────
+function saveChatHistory(){
+  // Save last 20 messages only (keep it light)
+  const toSave = chatHistory.slice(-500).filter(m => typeof m.content === 'string');
+  try{ localStorage.setItem('sa_chat_history', JSON.stringify(toSave)); }catch(e){}
+}
+
+function loadChatHistory(){
+  try{
+    const saved = JSON.parse(localStorage.getItem('sa_chat_history')||'[]');
+    const lastDate = localStorage.getItem('sa_chat_date');
+    if(!lastDate || !saved.length) return false;
+    // Keep history from last 3 days
+    const today = todayIST();
+    const daysDiff = Math.round((new Date(today) - new Date(lastDate)) / 86400000);
+    if(daysDiff <= 3){
+      chatHistory = saved;
+      return true;
+    }
+    // Older than 3 days — clear it
+    localStorage.removeItem('sa_chat_history');
+    localStorage.removeItem('sa_chat_date');
+    return false;
+  }catch(e){ return false; }
+}
+
+function saveChatDate(){
+  localStorage.setItem('sa_chat_date', todayIST());
+}
+
+function clearChat(){
+  chatHistory=[];
+  msgs.innerHTML='';
+  chipsEl.innerHTML='';
+  lastOccasion='Regular office day';
+  localStorage.removeItem('sa_chat_history');
+  localStorage.removeItem('sa_chat_date');
+  boot();
+}
 
 // ─── UNIVERSAL ATTACHMENT HANDLER ───────────────────────────────────
 // Stores the current pending attachment for sending with next message
