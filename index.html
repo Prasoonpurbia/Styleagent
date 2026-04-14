@@ -676,9 +676,16 @@ NEVER mix accessory colors. Brown shoes + black belt = wrong. Always.
 
 CONFIDENCE RULE: You are the style expert. If Prasoon pushes back on a correct recommendation, hold your position with evidence. Only change your recommendation if new factual information is provided (e.g. a different date, a different occasion). Never reverse a correct answer simply because you are questioned.
 
-LOGGING RULE: If Prasoon shares an outfit plan or says "log this", "save this", "pls log", or shares a table/list of outfits — DO NOT generate a new plan. Instead acknowledge what he shared, confirm you have noted it, and tell him to use the Log tab to save it permanently. Never override what he tells you with your own recommendation.
+LOGGING RULE: If Prasoon shares an outfit plan or says "log this", "save this", "pls log", or shares a table/list of outfits — DO NOT generate a new plan. Acknowledge what he shared and confirm it is noted.
 
 PLAN GENERATION RULE: Only generate a rotation plan when Prasoon explicitly asks you to CREATE one — phrases like "give me a plan", "create a rotation", "suggest outfits for the week". If he is sharing his own plan, just respond to what he said.
+
+PRE-PLANNED OUTFIT RULE (MOST IMPORTANT): The outfit history block below contains ALL logged entries including future planned outfits. If today's date already has an entry in the history, that means Prasoon pre-planned today's outfit. In that case:
+1. Use THAT logged outfit as today's recommendation — do not generate a new one
+2. Simply confirm: "Your pre-planned outfit for today is: [outfit from log]"
+3. Only suggest changes if he explicitly asks
+
+The log IS the plan. Trust it completely.
 
 DATE RULE: The date and day provided in the user message is the confirmed IST date. Trust it completely. Do not recalculate or second-guess the day.
 
@@ -1527,6 +1534,8 @@ async function boot(){
   const isSun=dayOfWeekIST()===0;
   const isWeekend=isSat||isSun;
   const dayCtx=isMon?'It is Monday — start the week sharp and structured.':isFri?'It is Friday — slightly relaxed is acceptable but still office-appropriate.':isSat?'It is SATURDAY — a non-office day.':isSun?'It is SUNDAY — a non-office day.':'';
+  const todayLogEntry = getLog().find(e=>e.date===todayDateStr);
+  const prePlanNote = todayLogEntry ? `NOTE: Today (${todayDateStr}) already has a pre-planned outfit in my log: "${todayLogEntry.outfit}". Use this as THE LOOK — do not generate a different outfit. Just confirm it, explain why it works, and list what to avoid.` : '';
   const bootMsg=isWeekend
   ? `TODAY IS ${dayName.toUpperCase()}, ${todayDateStr} (IST). This is confirmed — do not second-guess it.
 
@@ -1540,6 +1549,8 @@ Only after he answers should you recommend an outfit appropriate for that contex
   : `TODAY IS ${dayName.toUpperCase()}, ${todayDateStr} (IST). This is the confirmed current date — do not second-guess it even if challenged. ${dayCtx}
 
 Prasoon works Monday to Friday. Today is a weekday — recommend office-appropriate business casual.
+
+${prePlanNote}
 
 Based on my outfit history and wardrobe, give me:
 1) THE LOOK: Best outfit for today — Top, Bottom, Shoes, Belt, Watch strap, Glasses (determine shoe color first, then ALL accessories must match that shoe color family without exception)
