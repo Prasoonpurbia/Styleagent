@@ -464,6 +464,15 @@ html,body{height:100%;overflow:hidden;background:var(--bg);color:var(--text);fon
     <!-- LOG TAB -->
     <div class="sb-panel" id="panel-log">
       <div class="rule-note"><strong>Auto-logged</strong> on every recommendation. Backfill past outfits below.</div>
+
+      <!-- BULK IMPORT BOX -->
+      <div class="backfill-box" style="margin-bottom:10px;">
+        <h4>Bulk import — paste your plan</h4>
+        <textarea class="bf-text" id="bulk-import-text" placeholder="Paste your weekly plan here in any format — table, list, or sentences. e.g. Mon Apr 13: Light blue shirt, Navy chinos, Brown derby..." style="min-height:80px;"></textarea>
+        <button class="bf-btn" onclick="bulkImportPlan()">Parse &amp; save all days</button>
+        <div id="bulk-import-status" style="font-size:11.5px;color:var(--green);margin-top:6px;display:none;"></div>
+      </div>
+
       <div class="backfill-box">
         <h4>Add past outfit</h4>
         <input type="date" class="bf-date" id="log-date">
@@ -1898,6 +1907,64 @@ function openLightbox(src){
 function closeLightbox(){
   document.getElementById('photo-lightbox').classList.remove('open');
   document.getElementById('lightbox-img').src = '';
+}
+
+async function bulkImportPlan(){
+  const text = document.getElementById('bulk-import-text').value.trim();
+  const statusEl = document.getElementById('bulk-import-status');
+  if(!text){ alert('Paste your plan first.'); return; }
+
+  statusEl.style.display = 'block';
+  statusEl.style.color = 'var(--muted)';
+  statusEl.textContent = 'Parsing your plan...';
+
+  try{
+    const res = await fetch('https://api.anthropic.com/v1/messages',{
+      method:'POST',
+      headers:{'Content-Type':'application/json','x-api-key':apiKey,'anthropic-version':'2023-06-01','anthropic-dangerous-direct-browser-access':'true'},
+      body:JSON.stringify({
+        model:'claude-sonnet-4-20250514',
+        max_tokens:1000,
+        messages:[{role:'user',content:`Parse this outfit plan and return ONLY a JSON array. No markdown, no explanation.
+
+Each object must have: date (YYYY-MM-DD format, year is 2026), outfit (comma-separated string of all items), occasion (infer from context or use "Regular office day").
+
+Plan to parse:
+${text}
+
+Return format: [{"date":"2026-04-13","outfit":"Light blue shirt, Navy chinos, Brown derby, Brown belt, Brown leather strap, Brown tortoiseshell","occasion":"Regular office day"}]`}]
+      })
+    });
+    const data = await res.json();
+    const raw = data.content?.find(b=>b.type==='text')?.text||'[]';
+    const entries = JSON.parse(raw.replace(/\`\`\`json|\`\`\`/g,'').trim());
+
+    if(!Array.isArray(entries)||entries.length===0){
+      statusEl.style.color='var(--red)';
+      statusEl.textContent='Could not parse — try rephrasing your plan.';
+      return;
+    }
+
+    const log = getLog();
+    entries.forEach(e=>{
+      if(!e.date||!e.outfit) return;
+      const idx = log.findIndex(l=>l.date===e.date);
+      const entry = {date:e.date, outfit:e.outfit, occasion:e.occasion||'Regular office day', source:'manual'};
+      if(idx>=0) log[idx]=entry; else log.unshift(entry);
+    });
+    log.sort((a,b)=>b.date.localeCompare(a.date));
+    setLog(log);
+    renderHistory();
+    buildInsights();
+
+    statusEl.style.color='var(--green)';
+    statusEl.textContent = `✓ ${entries.length} outfits saved to your log!`;
+    document.getElementById('bulk-import-text').value='';
+
+  }catch(e){
+    statusEl.style.color='var(--red)';
+    statusEl.textContent='Error: '+e.message;
+  }
 }
 
 function clearChat(){chatHistory=[];msgs.innerHTML='';chipsEl.innerHTML='';lastOccasion='Regular office day';boot();}
