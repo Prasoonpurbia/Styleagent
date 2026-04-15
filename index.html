@@ -986,7 +986,12 @@ function getWardrobeString(){
 // ─── OUTFIT LOG ──────────────────────────────────────────────────────
 function getLog(){try{return JSON.parse(localStorage.getItem('outfit_log')||'[]');}catch{return[];}}
 function setLog(l){localStorage.setItem('outfit_log',JSON.stringify(l));}
-function daysBetween(d1,d2){return Math.round(Math.abs((new Date(d2)-new Date(d1))/86400000));}
+function daysBetween(d1,d2){
+  // Force midnight UTC to avoid timezone issues with date-only strings
+  const date1 = new Date(d1 + 'T00:00:00Z');
+  const date2 = new Date(d2 + 'T00:00:00Z');
+  return Math.round(Math.abs((date2-date1)/86400000));
+}
 
 function autoLog(outfitText,occasion){
   const today=todayIST();
