@@ -795,7 +795,10 @@ function launchApp(key){
 // Show guest or owner section based on config
 function applyGuestView(){
   const cfg = getGuestConfig();
-  if(cfg && cfg.password && cfg.k){
+  const hasOwnerKey = !!localStorage.getItem('sa_key');
+  
+  if(cfg && cfg.password && cfg.k && !hasOwnerKey){
+    // Guest browser — no owner key saved — show ONLY password field
     document.getElementById('owner-section').style.display='none';
     document.getElementById('guest-divider').style.display='none';
     document.getElementById('guest-section').style.display='block';
@@ -808,6 +811,10 @@ function applyGuestView(){
       guestBtnEl.style.border='none';
       guestBtnEl.textContent = 'Enter →';
     }
+  } else if(cfg && cfg.password && cfg.k && hasOwnerKey){
+    // Owner browser — show API key field + password field below
+    document.getElementById('guest-section').style.display='block';
+    document.getElementById('guest-divider').style.display='flex';
   }
 }
 applyGuestView();
