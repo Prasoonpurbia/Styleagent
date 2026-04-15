@@ -770,7 +770,14 @@ const sendBtn=document.getElementById('send');
 // Guests see password field; owner sees API key field
 // Both ultimately set apiKey and launch the app
 
+// Guest config — embedded directly in file by owner (not localStorage)
+// This means ANY browser opening the URL gets the same config
+const EMBEDDED_GUEST_CONFIG = null; // GUEST_CONFIG_PLACEHOLDER
+
 function getGuestConfig(){
+  // Check embedded config first (works on any browser)
+  if(EMBEDDED_GUEST_CONFIG && EMBEDDED_GUEST_CONFIG.password) return EMBEDDED_GUEST_CONFIG;
+  // Fall back to localStorage (owner's browser)
   try{ return JSON.parse(localStorage.getItem('sa_guest')||'null'); }catch{ return null; }
 }
 
@@ -882,13 +889,29 @@ function saveGuestAccess(){
   const pw=document.getElementById('admin-guest-pw').value.trim();
   if(!pw){ alert('Enter a guest password first.'); return; }
   if(!apiKey){ alert('You must be logged in as owner first before enabling guest access.'); return; }
-  // Encode the owner key so it is not plain text in storage
   const encoded = btoa(apiKey);
-  localStorage.setItem('sa_guest', JSON.stringify({password:pw, k:encoded}));
-  document.getElementById('guest-section').style.display='block';
-  document.getElementById('guest-divider').style.display='flex';
+  const configJson = JSON.stringify({password:pw, k:encoded});
+  // Save to localStorage for this browser
+  localStorage.setItem('sa_guest', configJson);
   updateAdminStatus();
-  alert('Guest access enabled!\nPassword to share: ' + pw + '\n\nAnyone with this password can now open the app without an API key.');
+  // Show the config to embed in the file
+  const instruction = `Guest access configured!
+
+To make it work on ALL browsers, update your index.html file:
+
+Find this line:
+const EMBEDDED_GUEST_CONFIG = null; // GUEST_CONFIG_PLACEHOLDER
+
+Replace null with:
+${configJson}
+
+So it becomes:
+const EMBEDDED_GUEST_CONFIG = ${configJson}; // GUEST_CONFIG_PLACEHOLDER
+
+Then deploy to GitHub. Guests on any browser will see only the password field.
+
+Password to share: ${pw}`;
+  alert(instruction);
 }
 
 function clearGuestAccess(){
