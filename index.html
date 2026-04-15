@@ -1461,6 +1461,11 @@ function isOutfitRecommendation(text){
 }
 
 function extractOutfit(text){
+  // Extract just the THE LOOK line — clean format
+  const lookMatch = text.match(/THE LOOK[:\s*]+(.*?)(?=\n|WHY|AVOID|$)/i);
+  if(lookMatch){
+    return lookMatch[1].replace(/\*\*/g,'').trim();
+  }
   const lines=text.split('\n').filter(l=>l.trim());
   const kw=['top','bottom','shoes','belt','watch','glasses','shirt','polo','jeans','overshirt','chino','loafer','derby','sneaker','linen'];
   const found=lines.filter(l=>kw.some(k=>l.toLowerCase().includes(k)));
@@ -1592,11 +1597,11 @@ function buildDailyBrief(){
     <div class="brief-grid">
       <div class="brief-item">
         <div class="brief-item-label">Yesterday</div>
-        <div class="brief-item-val">${yesterday?yesterday.outfit.split(',')[0]:'No record'}</div>
+        <div class="brief-item-val">${yesterday?yesterday.outfit.replace(/\*\*/g,'').replace(/THE LOOK[:\s]*/i,'').split(/[|,→]/)[0].trim().substring(0,40):'No record'}</div>
       </div>
       <div class="brief-item">
         <div class="brief-item-label">2 days ago</div>
-        <div class="brief-item-val">${twoDaysAgo?twoDaysAgo.outfit.split(',')[0]:'No record'}</div>
+        <div class="brief-item-val">${twoDaysAgo?twoDaysAgo.outfit.replace(/\*\*/g,'').replace(/THE LOOK[:\s]*/i,'').split(/[|,→]/)[0].trim().substring(0,40):'No record'}</div>
       </div>
     </div>
     <div class="brief-weather" id="weather-block">
