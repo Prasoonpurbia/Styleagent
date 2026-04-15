@@ -795,10 +795,20 @@ function launchApp(key){
 // Show guest or owner section based on config
 function applyGuestView(){
   const cfg = getGuestConfig();
-  const hasOwnerKey = !!localStorage.getItem('sa_key');
+  const ownerKey = localStorage.getItem('sa_key');
   
-  if(cfg && cfg.password && cfg.k && !hasOwnerKey){
-    // Guest browser — no owner key saved — show ONLY password field
+  if(!cfg || !cfg.password || !cfg.k){
+    // No guest config — show only API key field (default)
+    return;
+  }
+
+  if(ownerKey && ownerKey.startsWith('sk-')){
+    // Owner browser — has valid API key — show BOTH fields
+    document.getElementById('owner-section').style.display='block';
+    document.getElementById('guest-section').style.display='block';
+    document.getElementById('guest-divider').style.display='flex';
+  } else {
+    // Guest browser — no API key — show ONLY password field
     document.getElementById('owner-section').style.display='none';
     document.getElementById('guest-divider').style.display='none';
     document.getElementById('guest-section').style.display='block';
@@ -811,14 +821,9 @@ function applyGuestView(){
       guestBtnEl.style.border='none';
       guestBtnEl.textContent = 'Enter →';
     }
-  } else if(cfg && cfg.password && cfg.k && hasOwnerKey){
-    // Owner browser — show API key field + password field below
-    document.getElementById('guest-section').style.display='block';
-    document.getElementById('guest-divider').style.display='flex';
   }
 }
 applyGuestView();
-document.addEventListener('DOMContentLoaded', applyGuestView);
 
 // Owner login
 const savedKey=localStorage.getItem('sa_key');
