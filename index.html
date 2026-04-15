@@ -772,7 +772,7 @@ const sendBtn=document.getElementById('send');
 
 // Guest config — embedded directly in file by owner (not localStorage)
 // This means ANY browser opening the URL gets the same config
-const EMBEDDED_GUEST_CONFIG = null; // GUEST_CONFIG_PLACEHOLDER
+const EMBEDDED_GUEST_CONFIG = {"password": "prasoon@1234", "k": "c2stYW50LWFwaTAzLXcxaENlZUdIejVaMVVQQXFCMEtoQlVDNHMtSTJMSnh4RUprX3lwV0ctNzdlTElodFRrR1p2RTFvOEU1RXJaSVpoMmo0SGhhNFZTaUNuS1dKcWxqbFRnLXF2ZGVfUUFB"}; // GUEST_CONFIG_PLACEHOLDER
 
 function getGuestConfig(){
   // Check embedded config first (works on any browser)
