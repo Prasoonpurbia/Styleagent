@@ -785,12 +785,26 @@ function launchApp(key){
   }
 }
 
-// Show guest section if guest access is configured
-const guestConfig = getGuestConfig();
-if(guestConfig && guestConfig.password){
-  document.getElementById('guest-section').style.display='block';
-  document.getElementById('guest-divider').style.display='flex';
+// Show guest or owner section based on config
+function applyGuestView(){
+  const cfg = getGuestConfig();
+  if(cfg && cfg.password && cfg.k){
+    document.getElementById('owner-section').style.display='none';
+    document.getElementById('guest-divider').style.display='none';
+    document.getElementById('guest-section').style.display='block';
+    const guestPwLabel = document.querySelector('.s-guest-label');
+    if(guestPwLabel) guestPwLabel.textContent = 'Enter password to continue';
+    const guestBtnEl = document.getElementById('guest-btn');
+    if(guestBtnEl){
+      guestBtnEl.style.background='var(--accent)';
+      guestBtnEl.style.color='#fff';
+      guestBtnEl.style.border='none';
+      guestBtnEl.textContent = 'Enter →';
+    }
+  }
 }
+applyGuestView();
+document.addEventListener('DOMContentLoaded', applyGuestView);
 
 // Owner login
 const savedKey=localStorage.getItem('sa_key');
