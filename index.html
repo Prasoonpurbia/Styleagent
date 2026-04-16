@@ -1581,8 +1581,8 @@ function buildDailyBrief(){
   const dow=today.getDay();
   const isWeekendDay=dow===0||dow===6;
   const season=isWeekendDay?(m>=3&&m<=6?'Weekend · Hot':'Weekend'):(m>=3&&m<=6?'Hot summer':m>=7&&m<=9?'Monsoon':'Winter/mild');
-  const yesterday=log.find(e=>daysBetween(e.date,todayStr)===1);
-  const twoDaysAgo=log.find(e=>daysBetween(e.date,todayStr)===2);
+  const yesterday=log.find(e=>e.date < todayStr && daysBetween(e.date,todayStr)===1);
+  const twoDaysAgo=log.find(e=>e.date < todayStr && daysBetween(e.date,todayStr)===2);
   const w=getWardrobe();
   const freshTops=w.tops.filter(t=>{
     const found=log.find(e=>e.outfit.toLowerCase().includes(t.toLowerCase().split(' ')[0]));
