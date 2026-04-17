@@ -1039,6 +1039,20 @@ function renderHistory(){
   const list=document.getElementById('history-list');
   if(!list)return;
   if(!log.length){list.innerHTML='<div class="no-history">No outfits logged yet.<br>Recommendations auto-log here.</div>';return;}
+  // Add event delegation for star clicks
+  setTimeout(()=>{
+    const histList = document.getElementById('history-list');
+    if(histList && !histList._starListener){
+      histList._starListener = true;
+      histList.addEventListener('click', function(ev){
+        const btn = ev.target.closest('.star-btn');
+        if(!btn) return;
+        const date = btn.getAttribute('data-date');
+        const rating = parseInt(btn.getAttribute('data-rating'));
+        if(date && rating) rateOutfit(date, rating);
+      });
+    }
+  }, 100);
   list.innerHTML=log.map(e=>{
     const d=new Date(e.date+'T00:00:00');
     const label=d.toLocaleDateString('en-IN',{weekday:'short',day:'numeric',month:'short',year:'2-digit'});
@@ -1775,10 +1789,10 @@ function starsHtml(date, currentRating){
   const stars = [1,2,3,4,5].map(i => {
     const filled = currentRating && i <= currentRating ? '★' : '☆';
     const color = currentRating && i <= currentRating ? '#d97757' : '#ccc';
-    return `<button class="star-btn" style="color:${color}" onclick="rateOutfit('${date}',${i})" title="${i} star${i>1?'s':''}">${filled}</button>`;
+    return `<button class="star-btn" style="color:${color}" data-date="${date}" data-rating="${i}" title="${i} star${i>1?'s':''}">${filled}</button>`;
   }).join('');
   const label = currentRating ? ['','Didnt like','Okay','Good','Great','Perfect'][currentRating] : 'Rate this outfit';
-  return `<div class="h-rating">${stars}<span class="h-rating-label">${label}</span></div>`;
+  return `<div class="h-rating" data-entry-date="${date}">${stars}<span class="h-rating-label">${label}</span></div>`;
 }
 
 function getRatingContext(){
