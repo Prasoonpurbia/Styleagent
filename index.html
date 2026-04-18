@@ -189,6 +189,19 @@ html,body{height:100%;overflow:hidden;background:var(--bg);color:var(--text);fon
 #photo-lightbox.open{display:flex;}
 #photo-lightbox img{max-width:90vw;max-height:90vh;border-radius:12px;object-fit:contain;}
 
+/* API METER */
+.api-meter{background:var(--surface);border:1px solid var(--border);border-radius:10px;padding:11px 14px;margin-bottom:8px;}
+.api-meter h4{font-size:10px;letter-spacing:0.08em;text-transform:uppercase;color:var(--muted);margin-bottom:8px;}
+.api-meter-row{display:flex;justify-content:space-between;align-items:center;padding:3px 0;}
+.api-meter-label{font-size:12px;color:var(--muted);}
+.api-meter-val{font-size:12px;font-weight:500;color:var(--text);}
+.api-meter-bar{height:4px;background:var(--surface2);border-radius:4px;margin:6px 0 8px;overflow:hidden;}
+.api-meter-fill{height:100%;border-radius:4px;transition:width 0.4s;}
+.api-credits-row{display:flex;gap:6px;margin-top:8px;}
+.api-credit-input{flex:1;background:var(--surface2);border:1px solid var(--border2);border-radius:6px;padding:5px 8px;font-size:12px;color:var(--text);font-family:var(--font);outline:none;}
+.api-credit-input:focus{border-color:var(--accent);}
+.api-credit-btn{background:var(--accent);color:#fff;border:none;border-radius:6px;padding:5px 10px;font-size:11px;font-weight:500;font-family:var(--font);cursor:pointer;}
+
 /* INSIGHTS PANEL */
 .insight-card{background:var(--surface);border:1px solid var(--border);border-radius:10px;padding:12px;margin-bottom:10px;}
 .insight-card h4{font-size:11px;letter-spacing:0.06em;text-transform:uppercase;color:var(--muted);margin-bottom:8px;}
@@ -527,7 +540,27 @@ html,body{height:100%;overflow:hidden;background:var(--bg);color:var(--text);fon
       <div id="shop-list"></div>
     </div>
 
-    <div class="sb-foot">
+    <div class="sb-foot" style="padding-top:8px;">
+      <div class="api-meter">
+        <h4>API Usage</h4>
+        <div class="api-meter-row">
+          <span class="api-meter-label">Today</span>
+          <span class="api-meter-val" id="meter-today">0 calls · $0.00</span>
+        </div>
+        <div class="api-meter-row">
+          <span class="api-meter-label">This month</span>
+          <span class="api-meter-val" id="meter-month">0 calls · $0.00</span>
+        </div>
+        <div class="api-meter-bar"><div class="api-meter-fill" id="meter-bar" style="width:0%;background:#1e8e3e;"></div></div>
+        <div class="api-meter-row">
+          <span class="api-meter-label">Est. balance</span>
+          <span class="api-meter-val" id="meter-balance">—</span>
+        </div>
+        <div class="api-credits-row">
+          <input class="api-credit-input" id="credits-input" type="number" placeholder="Credits added ($)" min="0" step="1">
+          <button class="api-credit-btn" onclick="setCredits()">Set</button>
+        </div>
+      </div>
       <div class="sb-foot-btns">
         <button class="export-btn" onclick="exportData()">⬇ Export outfit history</button>
         <label class="export-btn" style="cursor:pointer;">⬆ Import outfit history<input type="file" id="import-file" accept=".json" onchange="importData(event)"></label>
@@ -788,7 +821,7 @@ function launchApp(key){
   apiKey = key;
   setupEl.classList.add('gone');
   setTimeout(()=>setupEl.style.display='none',420);
-  initDates(); renderWardrobePanel(); renderHistory(); buildInsights(); renderShopList(); boot();
+  initDates(); renderWardrobePanel(); renderHistory(); buildInsights(); renderShopList(); renderApiMeter(); boot();
   // Show admin panel to owner (has API key)
   if(key.startsWith('sk-')){
     document.getElementById('admin-panel').style.display='block';
@@ -1227,6 +1260,7 @@ async function runAdvisor(){
   const histLines=log.slice(0,30).map(e=>`${e.date} (${daysBetween(e.date,today)} days ago): ${e.outfit}`).join('\n');
   const userMsg=`My wardrobe:\n${getWardrobeString()}\n\nOutfit history:\n${histLines||'No history yet.'}\n\nAnalyse every item and return your verdict JSON array.`;
   try{
+    trackApiCall();
     const res=await fetch('https://api.anthropic.com/v1/messages',{
       method:'POST',
       headers:{'Content-Type':'application/json','x-api-key':apiKey,'anthropic-version':'2023-06-01','anthropic-dangerous-direct-browser-access':'true'},
@@ -1554,6 +1588,7 @@ async function go(text){
   try{
     {
       // ALL requests go to Claude — Claude understands context and decides what to do
+      trackApiCall();
       const res=await fetch('https://api.anthropic.com/v1/messages',{
         method:'POST',
         headers:{'Content-Type':'application/json','x-api-key':apiKey,'anthropic-version':'2023-06-01','anthropic-dangerous-direct-browser-access':'true'},
@@ -1699,6 +1734,7 @@ Then ask me one question about my day to refine if needed.`;
     }
   }
 
+  trackApiCall();
   try{
     const res=await fetch('https://api.anthropic.com/v1/messages',{
       method:'POST',
@@ -2070,6 +2106,7 @@ async function bulkImportPlan(){
   statusEl.textContent = 'Parsing your plan...';
 
   try{
+    trackApiCall();
     const res = await fetch('https://api.anthropic.com/v1/messages',{
       method:'POST',
       headers:{'Content-Type':'application/json','x-api-key':apiKey,'anthropic-version':'2023-06-01','anthropic-dangerous-direct-browser-access':'true'},
@@ -2176,6 +2213,68 @@ Return format: {"tops":["item1","item2"],"bottoms":["item1"],"shoes":["item1"],"
   }catch(e){
     statusEl.style.color = 'var(--red)';
     statusEl.textContent = 'Error: ' + e.message;
+  }
+}
+
+// ─── API USAGE METER ─────────────────────────────────────────────────
+const COST_PER_CALL = 0.015; // estimated $ per API call
+
+function getApiUsage(){
+  try{ return JSON.parse(localStorage.getItem('sa_api_usage')||'{"today":{},"month":{}}'); }catch{ return {"today":{},"month":{}}; }
+}
+
+function trackApiCall(){
+  const usage = getApiUsage();
+  const today = todayIST();
+  const month = today.substring(0,7); // YYYY-MM
+  usage.today[today] = (usage.today[today]||0) + 1;
+  usage.month[month] = (usage.month[month]||0) + 1;
+  // Keep only last 60 days
+  Object.keys(usage.today).forEach(d => {
+    if(daysBetween(d, today) > 60) delete usage.today[d];
+  });
+  localStorage.setItem('sa_api_usage', JSON.stringify(usage));
+  renderApiMeter();
+}
+
+function setCredits(){
+  const val = parseFloat(document.getElementById('credits-input').value);
+  if(!val || val <= 0) return;
+  localStorage.setItem('sa_credits', val.toString());
+  document.getElementById('credits-input').value = '';
+  renderApiMeter();
+}
+
+function renderApiMeter(){
+  const usage = getApiUsage();
+  const today = todayIST();
+  const month = today.substring(0,7);
+  const todayCalls = usage.today[today]||0;
+  const monthCalls = Object.entries(usage.month).find(([k])=>k===month)?.[1]||0;
+  const todayCost = (todayCalls * COST_PER_CALL).toFixed(2);
+  const monthCost = (monthCalls * COST_PER_CALL).toFixed(2);
+
+  const todayEl = document.getElementById('meter-today');
+  const monthEl = document.getElementById('meter-month');
+  const balEl = document.getElementById('meter-balance');
+  const barEl = document.getElementById('meter-bar');
+
+  if(todayEl) todayEl.textContent = `${todayCalls} calls · $${todayCost}`;
+  if(monthEl) monthEl.textContent = `${monthCalls} calls · $${monthCost}`;
+
+  const credits = parseFloat(localStorage.getItem('sa_credits')||'0');
+  if(credits > 0){
+    const totalSpent = parseFloat((Object.values(usage.month).reduce((a,b)=>a+b,0) * COST_PER_CALL).toFixed(2));
+    const balance = Math.max(0, credits - totalSpent);
+    const pct = Math.min(100, (balance/credits)*100);
+    if(balEl) balEl.textContent = `~$${balance.toFixed(2)} remaining`;
+    if(barEl){
+      barEl.style.width = pct+'%';
+      barEl.style.background = pct > 50 ? '#1e8e3e' : pct > 20 ? '#f29900' : '#d93025';
+    }
+  } else {
+    if(balEl) balEl.textContent = 'Set credits to track';
+    if(barEl) barEl.style.width = '0%';
   }
 }
 
