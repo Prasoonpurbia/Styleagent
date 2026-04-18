@@ -1686,6 +1686,19 @@ Then ask me one question about my day to refine if needed.`;
   saveChatDate();
   const hadHistory = loadChatHistory();
 
+  // If we already have a conversation from today, restore it and skip API call
+  if(hadHistory && chatHistory.length >= 2){
+    hideTyping();
+    const lastReply = chatHistory.filter(m=>m.role==='assistant').pop();
+    if(lastReply && typeof lastReply.content === 'string'){
+      const briefRec = document.getElementById('brief-rec');
+      if(briefRec) briefRec.textContent = lastReply.content.split('\n').find(l=>l.trim())||lastReply.content.substring(0,100);
+      addMsgWithAttachment('agent', lastReply.content, getChips(chatHistory.length), isOutfitRecommendation(lastReply.content), null, null);
+      booting = false;
+      return;
+    }
+  }
+
   try{
     const res=await fetch('https://api.anthropic.com/v1/messages',{
       method:'POST',
