@@ -1142,7 +1142,7 @@ function buildHistoryBlock(){
   const blockedTops=Object.entries(topLastWorn).filter(([,v])=>v.days<10).map(([t,v])=>`${t} (worn ${v.days} days ago — DO NOT USE until day 10)`);
   const availableTops=w.tops.filter(t=>!topLastWorn[t]||topLastWorn[t].days>=10);
 
-  const lines=log.slice(0,45).map(e=>{
+  const lines=log.slice(0,7).map(e=>{
     const d=new Date(e.date+'T00:00:00');
     const label=d.toLocaleDateString('en-IN',{weekday:'long',day:'numeric',month:'long'});
     const days=daysBetween(e.date,today);
@@ -1270,7 +1270,7 @@ async function runAdvisor(){
   results.innerHTML='<div class="advisor-loading">Analysing your wardrobe... 10–15 seconds.</div>';
   const log=getLog();
   const today=todayIST();
-  const histLines=log.slice(0,30).map(e=>`${e.date} (${daysBetween(e.date,today)} days ago): ${e.outfit}`).join('\n');
+  const histLines=log.slice(0,7).map(e=>`${e.date} (${daysBetween(e.date,today)} days ago): ${e.outfit}`).join('\n');
   const userMsg=`My wardrobe:\n${getWardrobeString()}\n\nOutfit history:\n${histLines||'No history yet.'}\n\nAnalyse every item and return your verdict JSON array.`;
   try{
     trackApiCall();
@@ -1601,7 +1601,6 @@ async function go(text){
   try{
     {
       // ALL requests go to Claude — Claude understands context and decides what to do
-      trackApiCall();
       const res=await fetch('https://api.anthropic.com/v1/messages',{
         method:'POST',
         headers:{'Content-Type':'application/json','x-api-key':apiKey,'anthropic-version':'2023-06-01','anthropic-dangerous-direct-browser-access':'true'},
@@ -1747,7 +1746,6 @@ Then ask me one question about my day to refine if needed.`;
     }
   }
 
-  trackApiCall();
   try{
     const res=await fetch('https://api.anthropic.com/v1/messages',{
       method:'POST',
@@ -1757,6 +1755,7 @@ Then ask me one question about my day to refine if needed.`;
     const data=await res.json();
     if(data.error)throw new Error(data.error.message);
     const reply=data.content?.find(b=>b.type==='text')?.text||"Good morning Prasoon! What's the plan today?";
+    trackApiCall(data.usage?.input_tokens, data.usage?.output_tokens);
     chatHistory.push({role:'user',content:bootMsg},{role:'assistant',content:reply});
     hideTyping();
     const briefRec=document.getElementById('brief-rec');
@@ -2230,18 +2229,28 @@ Return format: {"tops":["item1","item2"],"bottoms":["item1"],"shoes":["item1"],"
 }
 
 // ─── API USAGE METER ─────────────────────────────────────────────────
-const COST_PER_CALL = 0.015; // estimated $ per API call
+const COST_PER_CALL = 0.06; // estimated $ per API call (based on ~4000 tokens avg per call)
 
 function getApiUsage(){
   try{ return JSON.parse(localStorage.getItem('sa_api_usage')||'{"today":{},"month":{}}'); }catch{ return {"today":{},"month":{}}; }
 }
 
-function trackApiCall(){
+function trackApiCall(inputTokens, outputTokens){
   const usage = getApiUsage();
   const today = todayIST();
-  const month = today.substring(0,7); // YYYY-MM
-  usage.today[today] = (usage.today[today]||0) + 1;
-  usage.month[month] = (usage.month[month]||0) + 1;
+  const month = today.substring(0,7);
+  
+  // Calculate real cost: $3/M input, $15/M output (Sonnet pricing)
+  const cost = ((inputTokens||2000) * 3 / 1000000) + ((outputTokens||300) * 15 / 1000000);
+  
+  if(!usage.today[today]) usage.today[today] = {calls:0, cost:0};
+  if(!usage.month[month]) usage.month[month] = {calls:0, cost:0};
+  
+  usage.today[today].calls += 1;
+  usage.today[today].cost += cost;
+  usage.month[month].calls += 1;
+  usage.month[month].cost += cost;
+  
   // Keep only last 60 days
   Object.keys(usage.today).forEach(d => {
     if(daysBetween(d, today) > 60) delete usage.today[d];
@@ -2262,10 +2271,12 @@ function renderApiMeter(){
   const usage = getApiUsage();
   const today = todayIST();
   const month = today.substring(0,7);
-  const todayCalls = usage.today[today]||0;
-  const monthCalls = Object.entries(usage.month).find(([k])=>k===month)?.[1]||0;
-  const todayCost = (todayCalls * COST_PER_CALL).toFixed(2);
-  const monthCost = (monthCalls * COST_PER_CALL).toFixed(2);
+  const todayData = usage.today[today]||{calls:0,cost:0};
+  const monthData = usage.month[month]||{calls:0,cost:0};
+  const todayCalls = todayData.calls||0;
+  const monthCalls = monthData.calls||0;
+  const todayCost = (todayData.cost||0).toFixed(3);
+  const monthCost = (monthData.cost||0).toFixed(3);
 
   const todayEl = document.getElementById('meter-today');
   const monthEl = document.getElementById('meter-month');
@@ -2277,7 +2288,7 @@ function renderApiMeter(){
 
   const credits = parseFloat(localStorage.getItem('sa_credits')||'0');
   if(credits > 0){
-    const totalSpent = parseFloat((Object.values(usage.month).reduce((a,b)=>a+b,0) * COST_PER_CALL).toFixed(2));
+    const totalSpent = parseFloat(Object.values(usage.month).reduce((a,b)=>a+(b.cost||0),0).toFixed(3));
     const balance = Math.max(0, credits - totalSpent);
     const pct = Math.min(100, (balance/credits)*100);
     if(balEl) balEl.textContent = `~$${balance.toFixed(2)} remaining`;
@@ -2294,7 +2305,7 @@ function renderApiMeter(){
 // ─── CONVERSATION HISTORY PERSISTENCE ────────────────────────────────
 function saveChatHistory(){
   // Save last 20 messages only (keep it light)
-  const toSave = chatHistory.slice(-500).filter(m => typeof m.content === 'string');
+  const toSave = chatHistory.slice(-20).filter(m => typeof m.content === 'string');
   try{ localStorage.setItem('sa_chat_history', JSON.stringify(toSave)); }catch(e){}
 }
 
